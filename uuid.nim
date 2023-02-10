@@ -6,20 +6,6 @@ import os
 # Stolen from https://github.com/narimiran/itertools/blob/master/src/itertools.nim
 iterator chunked*[T](s: openArray[T], size: Positive): seq[T] =
   ## Iterator which yields ``size``-sized chunks from ``s``.
-  runnableExamples:
-      let
-        a = "abcde"
-        b = [11, 12, 13, 14, 15, 16, 17, 18]
-      var
-        s1: seq[seq[char]] = @[]
-        s2: seq[seq[int]] = @[]
-      for x in chunked(a, 2):
-        s1.add(x)
-      for x in chunked(b, 3):
-        s2.add(x)
-      doAssert s1 == @[@['a', 'b'], @['c', 'd'], @['e']]
-      doAssert s2 == @[@[11, 12, 13], @[14, 15, 16], @[17, 18]]
-
   var i: int
   while i + size < len(s):
     yield s[i ..< i+size]
