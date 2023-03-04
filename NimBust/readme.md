@@ -1,7 +1,7 @@
 # NimBust
-NimBust is a directory brute-forcer written in, you guessed it, Nim! This project takes inspiration from both FeroxBuster and GoBuster and is meant to showcase the performance advantage compiled programming languages have over interpreted languages. In this case, that is through the use of multithreading with each thread being given an equal workload. 
+NimBust is a directory brute-forcer written in, you guessed it, Nim! This project takes inspiration from both FeroxBuster and GoBuster and is meant to showcase the performance advantage compiled programming languages have over interpreted languages. In this case, that is accomplished through the use of multithreading with each thread being given an equal workload. 
 
-NimBust is also meant to showcase Nim's simple, Python-inspired syntax giving developers the best of both worlds! Another benefit of this is that the current codebase stands at only roughly 100 lines!
+NimBust is also meant to showcase Nim's simple, Python-inspired syntax giving developers the best of all worlds! Another benefit of this is that the current codebase stands at only roughly 100 lines!
 
 At present, the project only does directory brute forcing. Outputting to file, appending extensions, and recursion are currently not supported but may be added in the future.
 
