@@ -10,4 +10,4 @@ At present, there is only a single dependency: OpenSSL.
 Once all dependencies are met, simply run `nim build` to create the project. 
 
 # Usage
-`nimbust <url> <wordlist> <threads>
+`nimbust <url> <wordlist> <threads>`
