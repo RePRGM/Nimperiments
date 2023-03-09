@@ -1,15 +1,14 @@
 # NimBust
-NimBust is a directory brute-forcer written in, you guessed it, Nim! This project takes inspiration from both FeroxBuster and GoBuster and is meant to showcase the performance advantage compiled programming languages have over interpreted languages. In this case, that is accomplished through the use of multithreading with each thread being given an equal workload. 
 
-NimBust is also meant to showcase Nim's simple, Python-inspired syntax giving developers the best of all worlds! Another benefit of this is that the current codebase stands at only roughly 100 lines!
+NimBust is a directory brute force tool (or, as I guess we're calling it now, a "content discovery" tool) written in (you guessed it) Nim! It is a compiled, threaded application with most of the basic features one would expect from a directory brute force tool implemented. NimBust makes use of multithreading and evenly distributed workloads to be as fast as possible, however, it is also possible to slow NimBust down as needed. _We wouldn't want to cause a DOS, afterall_. 
 
-At present, the project only does directory brute forcing. Outputting to file, appending extensions, and recursion are currently not supported but may be added in the future.
+As Nim 2.0 approaches, it is worth mentioning this project was built upon Nim 1.6.10 which, at the time of writing, is the current stable version of Nim.
 
 # Dependencies 
-At present, there is only a single dependency: OpenSSL.
+At present, there are only two dependencies: OpenSSL. Install with your system package manager if it is not already installed. You will also need the argparse Nim module. This can be installed through Nimble e.g. `nimble install argparse`
 
 # Installation
-Once all dependencies are met, simply run `nim build` to create the project. 
+Once all dependencies are met, clone the repo and simply run `nim build` to create the project. 
 
 # Usage
-`nimbust <url> <wordlist> <threads>`
+`nimbust -h` or `nimbust --help` will display the help menu. Everything should be self-explanatory. 
