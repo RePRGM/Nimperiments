@@ -18,3 +18,6 @@ Takes a raw shellcode file as an argument and encodes it into UUID strings. That
 
 ## DJB2
 Takes whatever string you want to hash as an argument and hashes it using a slightly modified version of DJB2. You can thank ChatGPT for this one. Spat out bad code, but close enough that even I could fix it. 
+
+## Perun's Fart
+A port of the Perun's Fart NTDLL Unhooking (aka unhooking from suspended process) technique to Nim. Ported from @D1rkMtr's github, mixed in and glued together with code from  [@S3cur3Th1sSh1t's Nim DInvoke](https://github.com/S3cur3Th1sSh1t/Nim_DInvoke).
