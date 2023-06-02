@@ -18,7 +18,7 @@ from std/osproc import execCmd
 
 type ThreadData = tuple[doAppend: bool, wordlist: seq[string], baseUrl: string, extension: seq[string], output: string, rDelay: float, timeout: int, userAgent: string, quietMode: bool, recursion: bool]
 
-const version = "1.1.0"
+const version = "0.2.0"
 var 
   L: Lock
   
