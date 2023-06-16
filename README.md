@@ -21,3 +21,6 @@ Takes whatever string you want to hash as an argument and hashes it using a slig
 
 ## Perun's Fart
 A port of the Perun's Fart NTDLL Unhooking (aka unhooking from suspended process) technique to Nim. Ported from @D1rkMtr's github, mixed in and glued together with code from  [@S3cur3Th1sSh1t's Nim DInvoke](https://github.com/S3cur3Th1sSh1t/Nim_DInvoke).
+
+## Evil Lsass Twin
+A port of the [Dirty Vanity](https://github.com/deepinstinct/Dirty-Vanity) project to fork and dump the lsass process. Requires the `winim` module. (Cross-)Compile with `nim c -d:mingw --cpu:amd64 --app=console -o=evillsasstwin.exe evillsasstwin.nim`
