@@ -1,5 +1,40 @@
 import winim
 
+const
+  RTL_CLONE_PROCESS_FLAGS_CREATE_SUSPENDED = 0x00000001
+  RTL_CLONE_PROCESS_FLAGS_INHERIT_HANDLES = 0x00000002
+  RTL_CLONE_PROCESS_FLAGS_NO_SYNCHRONIZE = 0x00000004
+
+type
+  T_CLIENT_ID = object
+    UniqueProcess: HANDLE
+    UniqueThread: HANDLE
+  
+  RTLP_PROCESS_REFLECTION_REFLECTION_INFORMATION = object
+    ReflectionProcessHandle: HANDLE
+    ReflectionThreadHandle: HANDLE
+    ReflectionClientId: CLIENT_ID
+
+  PRTLP_PROCESS_REFLECTION_REFLECTION_INFORMATION = ptr RTLP_PROCESS_REFLECTION_REFLECTION_INFORMATION
+
+  RtlCreateProcessReflectionFunc = proc(
+    ProcessHandle: HANDLE,
+    Flags: ULONG,
+    StartRoutine: PVOID,
+    StartContext: PVOID,
+    EventHandle: HANDLE,
+    ReflectionInformation: ptr RTLP_PROCESS_REFLECTION_REFLECTION_INFORMATION
+  ): NTSTATUS {.stdcall.}
+  
+  ReflectionContext = object
+    unk1: DWORD64
+    Flags: ULONG
+    StartRoutine: PVOID
+    StartContext: PVOID
+    unk2: PVOID
+    unk3: PVOID
+    EventHandle: PVOID
+
 func toByteSeq*(str: string): seq[byte] {.inline.} =
   ## Converts a string to the corresponding byte sequence.
   @(str.toOpenArrayByte(0, str.high))
@@ -52,41 +87,6 @@ proc SetPrivilege(hToken: HANDLE, lpszPrivilege: LPCTSTR, bEnablePrivilege: BOOL
         return false
 
     return true
-
-const
-  RTL_CLONE_PROCESS_FLAGS_CREATE_SUSPENDED = 0x00000001
-  RTL_CLONE_PROCESS_FLAGS_INHERIT_HANDLES = 0x00000002
-  RTL_CLONE_PROCESS_FLAGS_NO_SYNCHRONIZE = 0x00000004
-
-type
-  T_CLIENT_ID = object
-    UniqueProcess: HANDLE
-    UniqueThread: HANDLE
-  
-  RTLP_PROCESS_REFLECTION_REFLECTION_INFORMATION = object
-    ReflectionProcessHandle: HANDLE
-    ReflectionThreadHandle: HANDLE
-    ReflectionClientId: CLIENT_ID
-
-  PRTLP_PROCESS_REFLECTION_REFLECTION_INFORMATION = ptr RTLP_PROCESS_REFLECTION_REFLECTION_INFORMATION
-
-  RtlCreateProcessReflectionFunc = proc(
-    ProcessHandle: HANDLE,
-    Flags: ULONG,
-    StartRoutine: PVOID,
-    StartContext: PVOID,
-    EventHandle: HANDLE,
-    ReflectionInformation: ptr RTLP_PROCESS_REFLECTION_REFLECTION_INFORMATION
-  ): NTSTATUS {.stdcall.}
-  
-  ReflectionContext = object
-    unk1: DWORD64
-    Flags: ULONG
-    StartRoutine: PVOID
-    StartContext: PVOID
-    unk2: PVOID
-    unk3: PVOID
-    EventHandle: PVOID
 
 when isMainModule:
     var hNtdll: HMODULE = LoadLibrary("ntdll.dll")
