@@ -26,4 +26,4 @@ A port of the Perun's Fart NTDLL Unhooking (aka unhooking from suspended process
 A directory brute forcer. Plain and simple. Probably the most updated project here. Next features coming: Abort after x number of request timeouts or 500/503 errors to avoid DOS.
 
 ## Evil Lsass Twin
-A port of the [Dirty Vanity](https://github.com/deepinstinct/Dirty-Vanity) project to fork and dump the lsass process. Requires the `winim` module. (Cross-)Compile with `nim c -d:mingw --cpu:amd64 --app=console -d:release --opt:size -d:danger -d:strip -o=evillsasstwin.exe evillsasstwin.nim`
+A port of the [Dirty Vanity](https://github.com/deepinstinct/Dirty-Vanity) project to fork and dump the lsass process. Requires the `winim` module. Numerous IOCs and opportunities for detection since this simple port was not built with stealth in mind. Tested on Windows 10 22H2 and Windows 11.(Cross-)Compile with `nim c -d:mingw --cpu:amd64 --app=console -d:release --opt:size -d:danger -d:strip -o=evillsasstwin.exe evillsasstwin.nim`
