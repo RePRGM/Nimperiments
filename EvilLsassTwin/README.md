@@ -27,9 +27,15 @@ This project was developed and tested with Nim 1.6.14. It has not yet been teste
 
 # Resources
 [Bill Demirkapi - Abusing Windows Implemention of Fork for Stealthy Memory Operations](https://billdemirkapi.me/abusing-windows-implementation-of-fork-for-stealthy-memory-operations/)
+
 [Dirty Vanity](https://github.com/deepinstinct/Dirty-Vanity)
+
 [TransactedSharpMiniDump](https://github.com/PorLaCola25/TransactedSharpMiniDump/tree/master)
+
 [Rasta Mouse - Dumping LSASS with Duplicated Handles](https://rastamouse.me/dumping-lsass-with-duplicated-handles/)
+
 [Rasta Mouse - Duplicating Handles in C#](https://rastamouse.me/duplicating-handles-in-csharp/)
+
 [Splintercod3 - The Hidden Side of Seclogon - Part 2](https://splintercod3.blogspot.com/p/the-hidden-side-of-seclogon-part-2.html)
+
 [Diversenok - The Definitive Guide to Process Cloning on Windows](https://diversenok.github.io/2023/04/20/Process-Cloning.html)
