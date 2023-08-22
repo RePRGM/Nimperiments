@@ -9,7 +9,7 @@ switch("hints", "off")
 
 task build, "Build Evil Lsass Twin":
     echo "Building Evil Lsass Twin..."
-    exec "nim c -d:noRes -d:release --cpu:amd64 -d:danger -d:mingw --gc:orc -d:strip --opt:none --passL:-Wl,--dynamicbase -o=EvilLsassTwin.exe lsasstwin.nim"
+    exec "nim c -d:noRes -d:release --cpu:amd64 -d:danger -d:mingw --gc:orc -d:strip --opt:none --passL:-Wl,--dynamicbase -o=EvilLsassTwin.exe EvilLsassTwin.nim"
     exec "nim c -d:release --cpu:amd64 -d:danger --gc:orc -d:strip EvilLsassTwinServer.nim"
 
 task dependencies, "Install Dependencies":
