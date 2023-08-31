@@ -18,7 +18,11 @@ Requires the `winim` and `ptr_math` modules. Numerous IOCs and opportunities for
 
 Tested on Windows 10 22H2 and Windows 11 with Defender enabled (Cloud Analysis disabled).
 
-Must be run from an Administrator Command Prompt or Powershell as EvilLsassTwin depends on the SeDebugPrivilege. _Note: SeDebugPrvilege is enabled by default on (Administrator) Powershell._
+Must be run from an Administrator Command Prompt or Powershell as EvilLsassTwin depends on the SeDebugPrivilege. 
+
+_Note: SeDebugPrvilege is enabled by default on Elevated Powershell._
+
+_Note: Tool will **not** work against PPL or Credential Guard. Tool also will not work when EDRs patch LSASS a la [Cortex XDR Modifications](https://www.paloaltonetworks.com/blog/security-operations/detecting-credential-stealing-with-cortex-xdr/)_
 
 # Usage
 This project was developed and tested with Nim 1.6.10 and 1.6.14. It is **not** compatible with Nim 2.0.
