@@ -3,7 +3,7 @@ Originally, a port of the [Dirty Vanity](https://github.com/deepinstinct/Dirty-V
 
 Nim, by default (or rather the Winim module) makes use of dynamic function resolution for Windows API functions, so the IAT should only include a reference to GetProcAddress and LoadLibrary (for better or worse).
 
-The process cloning functionality has been updated to use make use of NtCreateProcessEx instead of RtlCreateProcessReflection as this only requires PROCESS_CREATE_PROCESS. 
+The process cloning functionality has been updated to use make use of NtCreateProcessEx instead of RtlCreateProcessReflection as this only requires PROCESS_CREATE_PROCESS and does not create an initial thread (thereby triggering process creation kernel callbacks). 
 
 Partial implementation of Process Ghosting technique is included to make use of the Delete On Close functionality. 
 
