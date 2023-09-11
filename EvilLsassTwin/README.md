@@ -14,7 +14,7 @@ How this works:
 4. File is deleted after open handle to it is closed
 5. Mapped Data (memory dump) is sent to server
  
-Requires the `winim` and `ptr_math` modules. Numerous IOCs and opportunities for detection since this simple port was not built with stealth in mind. However, as noted above, this project _does_ include some stealthy features. 
+Requires the `winim` and `ptr_math` modules. Several IOCs and opportunities for detection since this simple port was not originally built with stealth in mind. However, as noted above, this project _does_ include some stealthy features. 
 
 Tested on Windows 10 22H2 and Windows 11 with Defender enabled (Cloud Analysis disabled).
 
