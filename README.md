@@ -23,7 +23,10 @@ Takes whatever string you want to hash as an argument and hashes it using a slig
 A port of the Perun's Fart NTDLL Unhooking (aka unhooking from suspended process) technique to Nim. Ported from @D1rkMtr's github, mixed in and glued together with code from  [@S3cur3Th1sSh1t's Nim DInvoke](https://github.com/S3cur3Th1sSh1t/Nim_DInvoke).
 
 ## Nim Bust
-A directory brute forcer. Plain and simple. Probably the most updated project here. Next features coming: Abort after x number of request timeouts or 500/503 errors to avoid DOS.
+A directory brute forcer. Plain and simple. Next features planned: Abort after x number of request timeouts or 500/503 errors to avoid DOS.
 
 ## Evil Lsass Twin
 Lsass Dump Tool. More info in project folder.
+
+## unhook-from-clone
+PoC showcasing unhooking a process by utilizing a clone/fork's copy of NTDLL. Reuses significant portion of Perun's Fart code.
