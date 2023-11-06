@@ -1,7 +1,7 @@
 # Evil Lsass Twin
 Originally, a port of the [Dirty Vanity](https://github.com/deepinstinct/Dirty-Vanity) project to fork and dump the LSASS process. Has been updated upon further research to attempt to duplicate open handles to LSASS. If this fails, it will obtain a handle to LSASS through the NtGetNextProcess function instead of OpenProcess/NtOpenProcess. 
 
-Nim, by default (or rather the Winim module) makes use of dynamic function resolution for Windows API functions, so the IAT should only include a reference to GetProcAddress and LoadLibrary (for better or worse).
+Nim, by default (or rather the Winim module) makes use of dynamic function resolution for Windows API functions, so the IAT should only include ~~a reference to GetProcAddress and LoadLibrary (for better or worse)~~ references to the same Win32 API functions regardless of which ones are actually being used.
 
 The process cloning functionality has been updated to use make use of NtCreateProcessEx instead of RtlCreateProcessReflection as this only requires PROCESS_CREATE_PROCESS and does not create an initial thread (thereby triggering process creation kernel callbacks). 
 
