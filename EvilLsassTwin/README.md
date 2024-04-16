@@ -45,6 +45,11 @@ First, I don't like Nim's command-line parsing options. Second, if you can't mak
 ## Why Nim?
 I wrote an entire blog post about this. See: [Why Nim? - RePRGM](https://reprgm.github.io/2023/02/13/why-nim/)
 
+## Why a PPL branch?
+BYOVD is a cool technique but it has it's downsides. For one, the vulnerable driver is included in and extracted from the `EvilLsassTwin` executable to make things simpler. Those bytes could be flagged by AV/EDR. The vulnerable driver itself is also on the Microsoft Driver Blocklist so that is another potential issue. Not to mention, an unknown executable is attempting to install a known-vulnerable driver. Then, there's the file creation for the driver and the subsequent creation of a (driver) service. 
+
+So, yeah. High-risk, high-reward. I thought it would be better to keep all of that in a separate branch.
+
 # Important Notes
 By default, EvilLsassTwin *will* use RC4 to encrypt the dump and display the encryption key in hexadecimal in the console. EvilTwinServer will attempt to decrypt the dump file automatically for you. However, if this fails, you will have to decrypt the file yourself. This can be done with OpenSSL. Take note of the command used in either the terminal (if running) or in the `EvilTwinServer.nim` file!
 
