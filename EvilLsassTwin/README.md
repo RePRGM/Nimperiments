@@ -40,7 +40,7 @@ This project was developed and tested with Nim 1.6.10 and 1.6.14. It is **not** 
 Simplicity. A simple call to `SystemFunction032` is all it takes to implement. Nothing else to code. Entropy isn't sky-high. And it's good enough.
 
 ## Why code changes instead of command-line parameters?
-First, I don't like Nim's command-line parsing options. Second, if you can't make those simple changes to the code, you probably shouldn't be using this. Third, no command-line parameters means no need for command-line spoofing.
+First, I don't like Nim's command-line parsing options. Second, if you can't make those simple changes to the code, you probably shouldn't be using this. Third, no command-line parameters means no need for command-line spoofing. Fourth, every code modification, no matter how big or small also changes the file hash. Not a huge "win", but I'll take it.
 
 ## Why Nim?
 I wrote an entire blog post about this. See: [Why Nim? - RePRGM](https://reprgm.github.io/2023/02/13/why-nim/)
@@ -62,7 +62,19 @@ echo "[!] Sending Encryption Key to Server..."
             echo "[-] Could Not Send Encryption Key to Server!"
 ```
 
-Lastly, the custom minidump function is not complete as of now. This means **only** NTLM hashes will be found by tools such as Mimikatz and Pypykatz. For anything else, you will need to configure the tool to use the `MiniDumpWriteDump` function which also will result in large (~50+ MB) dump files. It is because this custom function is not complete that the option to use the traditional API function is there.
+Also of note, the custom minidump function is not complete as of now. This means **only** NTLM hashes will be found by tools such as Mimikatz and Pypykatz. For anything else, you will need to configure the tool to use the `MiniDumpWriteDump` function which also will result in large (~50+ MB) dump files. It is because this custom function is not complete that the option to use the traditional API function is there.
+
+Lastly, the tool has **not** been tested being loaded reflectively. If this is what you want, a quote from @byt3bl33d3r on the [Offensive Nim](https://github.com/byt3bl33d3r/OffensiveNim) page:
+
+> By default, Nim doesn't generate PE's with a relocation table which is needed by most tools that reflectively load EXE's.
+
+> To generate a Nim executable with a relocation section you need to pass a few additional flags to the linker.
+
+> Specifically: --passL:-Wl,--dynamicbase
+
+> Full example command:
+
+> `nim c --passL:-Wl,--dynamicbase my_awesome_malwarez.nim`
 
 # Resources
 [Bill Demirkapi - Abusing Windows Implemention of Fork for Stealthy Memory Operations](https://billdemirkapi.me/abusing-windows-implementation-of-fork-for-stealthy-memory-operations/)
