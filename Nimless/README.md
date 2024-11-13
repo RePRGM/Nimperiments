@@ -6,7 +6,7 @@ The examples folder includes Work-in-Progress scripts to be used in combination 
 
 ## Notes
 - Some Winim converters (such as `winstrConverterStringToLPWSTR`) may cause compiler and linker errors as these attempt to reference standard library and Win32 API functions.
-- Nim Arrays (and Sequences) cause linker errors. Memory allocation and use of UncheckedArray type works as a workaround.
+- Nim Arrays (and Sequences) seem to cause linker errors. Memory allocation and use of UncheckedArray type works as a workaround. *Update: this may not be the case. Looking into this further. Char array seems to be fine. StackString macro also uses byte arrays.*
 - Oddity: May not be able to use `emit` pragma to directly write C/C++ code.
 
 ## Credit
