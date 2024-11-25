@@ -2,10 +2,6 @@ import
     winim,
     utils/[gpa, gmh, hash, stdio, stackstr]
 
-func toByteSeq*(str: string): seq[byte] {.inline.} =
-  ## Converts a string to the corresponding byte sequence.
-  @(str.toOpenArrayByte(0, str.high))
-
 proc main(): int {.exportc: "Main".} =
   var 
     hKernel32 = gmh("KERNEL32.DLL")
