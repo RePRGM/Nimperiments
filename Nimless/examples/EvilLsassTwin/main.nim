@@ -112,13 +112,13 @@ proc main() {.exportc: "Main".} =
   sUrl[0] = '1'
   sUrl[1] = '0'
   sUrl[2] = '.'
-  sUrl[3] = '0'
+  sUrl[3] = '1'
   sUrl[4] = '.'
-  sUrl[5] = '0'
+  sUrl[5] = '2'
   sUrl[6] = '.'
   sUrl[7] = '1'
-  sUrl[8] = '7'
-  sUrl[9] = '5'
+  sUrl[8] = '0'
+  sUrl[9] = '9'
   sUrl[10] = '\0'
 
   fileDI.DoDeleteFile = TRUE
