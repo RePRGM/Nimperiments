@@ -19,7 +19,9 @@ The *original* Evil Lsass Twin version without any custom functionality, obfusca
 Had to do some nasty, hacky things to get this working as PIC. Code refresh incoming! 
 
 First, you cannot enabling printing to the console if you intend to use this as shellcode (PIC). It's fine to enable that otherwise.
+
 Second, you need to change lines 112-121 in `main.nim` to *your* server's IP address. This is a character array and it looks awful. The stack string macro was causing issues here and this was the quick and dirty way to get PIC working.
+
 Third, if and only if you want to use a different port, change line 232. 
 
 If you've used Evil Lsass Twin before, you know how to use this version. Compile -> Set up a listener on your server (ex: `nc -lvnp 9001 > lsassDump.dmp`) -> Run executable on Windows target
