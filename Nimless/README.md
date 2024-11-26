@@ -36,6 +36,7 @@ To use as PIC:
 Compile -> Change and run `pic.py` script -> Use output file as desired
 
 The `pic.py` script will write the raw bytes of the .text section to a new file. This is your shellcode. What you do with it is up to you. 
+
 Ideas:
 1. Embed the file into a shellcode loader with a language such as with Golang's `embed` directive or Nim's `slurp` function.
 2. Parse the file with a custom script, encode/encrypt (hex, base64, UUID, MAC, AES, XOR) the raw bytes, and copy/paste into file (*don't really recommend. 5KB in size*).
