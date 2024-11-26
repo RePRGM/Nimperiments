@@ -6,6 +6,7 @@ The examples folder includes Work-in-Progress and Proof-of-Concept programs. Fil
 
 - Use command line switch (or add to configuration file) `-d:MalDebug` to enable printing to the console.
 - Use command line switch (or add to configuration file) `-d:mingw` to cross-compile from Linux.
+- Use command line switch (or add to configuration file) `-o="EvilLsassTwin.exe"` to change the executable file name.
 - Uncomment (`--l:"-Wl,-subsystem,windows"`) in the configuration file to prevent a console from opening. Not *required* but you should do this if you don't enable printing to console. They kind of go hand in hand.
 
 Compile with `nim c filenameHere.nim`
@@ -26,7 +27,20 @@ Second, you need to change lines 112-121 in `main.nim` to *your* server's IP add
 
 Third, if and only if you want to use a different port, change line 232. 
 
-If you've used Evil Lsass Twin before, you know how to use this version. Compile -> Set up a listener on your server (ex: `nc -lvnp 9001 > lsassDump.dmp`) -> Run executable on Windows target
+If you've used Evil Lsass Twin before, you know how to use this version. 
+
+Compile -> Set up a listener on your server (ex: `nc -lvnp 9001 > lsassDump.dmp`) -> Run executable on Windows target
+
+To use as PIC:
+
+Compile -> Change and run `pic.py` script -> Use output file as desired
+
+The `pic.py` script will write the raw bytes of the .text section to a new file. This is your shellcode. What you do with it is up to you. 
+Ideas:
+1. Embed the file into a shellcode loader with a language such as with Golang's `embed` directive or Nim's `slurp` function.
+2. Parse the file with a custom script, encode/encrypt (hex, base64, UUID, MAC, AES, XOR) the raw bytes, and copy/paste into file (*don't really recommend. 5KB in size*).
+3. Parse the file with a custom script that adds the encoded/encrypted bytes to a shellcode loader automatically
+4. Cobalt Strike `shinject` command or other similar C2 functionality
 
 ## Notes
 - Some Winim converters (such as `winstrConverterStringToLPWSTR`) may cause compiler and linker errors as these attempt to reference standard library and Win32 API functions.
