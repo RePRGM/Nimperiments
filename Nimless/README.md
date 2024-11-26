@@ -14,7 +14,9 @@ Compile with `nim c filenameHere.nim`
 Self explanatory. Use with utils folder, linker script and Nim configuration file. Not tested as PIC.
 
 ### Evil Lsass Twin
-The *original* Evil Lsass Twin version without any custom functionality, obfuscation, or other evasive features. It also does not attempt to duplicate existing handles to LSASS, even though that was a feature of the original. There were a few things I'd have to change to get that feature working without the Nim Runtime, so for the time being (and it may never be added here) it's out. Since it's here in the Nimless folder, that obviously means this version works without the Nim Runtime or C Standard Library. Tested and works as PIC. Also included is a Python script to extract the .text section and write to a new file. File names are hardcoded and will need to be changed! 
+The *original* Evil Lsass Twin version without any custom functionality, obfuscation, or other evasive features. It also does not attempt to duplicate existing handles to LSASS, even though that was a feature of the original. There were a few things I'd have to change to get that feature working without the Nim Runtime, so for the time being (and it may never be added here) it's out. 
+
+Since it's here in the Nimless folder, that obviously means this version works without the Nim Runtime or C Standard Library. Tested and works as PIC. Also included is a Python script to extract the .text section and write to a new file. File names are hardcoded and will need to be changed! 
 
 Had to do some nasty, hacky things to get this working as PIC. Code refresh incoming! 
 
