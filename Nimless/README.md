@@ -7,6 +7,7 @@ The examples folder includes Work-in-Progress and Proof-of-Concept programs. Fil
 - Use command line switch (or add to configuration file) `-d:MalDebug` to enable printing to the console.
 - Use command line switch (or add to configuration file) `-d:mingw` to cross-compile from Linux.
 - Use command line switch (or add to configuration file) `-o="EvilLsassTwin.exe"` to change the executable file name.
+- Use command line switches `--skipUserCfg`, `--skipParentCfg`, and `--skipProjCfg` if compiling Nim projects in the same directory or in subdirectories as "Nimless" projects.
 - Uncomment (`--l:"-Wl,-subsystem,windows"`) in the configuration file to prevent a console from opening. Not *required* but you should do this if you don't enable printing to console. They kind of go hand in hand.
 
 Compile with `nim c filenameHere.nim`
@@ -23,9 +24,13 @@ Had to do some nasty, hacky things to get this working as PIC. Code refresh inco
 
 First, you cannot enabling printing to the console if you intend to use this as shellcode (PIC). It's fine to enable that otherwise.
 
-Second, you need to change lines 112-121 in `main.nim` to *your* server's IP address. This is a character array and it looks awful. The stack string macro was causing issues here and this was the quick and dirty way to get PIC working.
+~~Second, you need to change lines 112-121 in `main.nim` to *your* server's IP address. This is a character array and it looks awful. The stack string macro was causing issues here and this was the quick and dirty way to get PIC working.~~
 
-Third, if and only if you want to use a different port, change line 232. 
+Second, change line 58 in `main.nim` to include *your* server's IPv4 address. This *was* a character array and it *did* look awful before. This has since been changed to a stack string which *does* still cause linker errors under normal circumstances. Instead of *actually* fixing it, I figured out you can use `--l:"-Wl,--allow-multiple-definition"` to workaround the issue. Not ideal from a developer standpoint but it works. 
+
+Third, if and only if you want to use a different port, change line 59.
+
+Fourth, should you want to remove another indicator, change the temporary file name defined on line 56.
 
 If you've used Evil Lsass Twin before, you know how to use this version. 
 
@@ -45,7 +50,11 @@ Ideas:
 
 ## Notes
 - Some Winim converters (such as `winstrConverterStringToLPWSTR`) may cause compiler and linker errors as these attempt to reference standard library and Win32 API functions.
-- Nim Arrays (and Sequences) seem to cause linker errors. Memory allocation and use of UncheckedArray type works as a workaround. *Update: this may not be the case. Looking into this further. Char array seems to be fine. StackString macro also uses byte arrays.*
+- Nim Arrays (and Sequences) seem to cause linker errors. Memory allocation and use of UncheckedArray type works as a workaround.
+
+  *Update: this may not be the case. Looking into this further. Char array seems to be fine. StackString macro also uses byte arrays.*
+  
+  *Update 2: Issue seems to be connected to the `complexXor` function in `stackstr.nim`. Linker tends to complain about multiple defintions for it. Workaround, as described above, is telling the linker to allow this. Need to actually fix at some point though*
 - Oddity: May not be able to use `emit` pragma to directly write C/C++ code.
 
 ## Credit
