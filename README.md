@@ -30,3 +30,6 @@ Lsass Dump Tool. More info in project folder.
 
 ## unhook-from-clone
 PoC showcasing unhooking a process by utilizing a clone/fork's copy of NTDLL. Reuses significant portion of Perun's Fart code.
+
+## Generate NTLM
+PoC for generating NTLM hashes. Requires @khchen's hashlib module.  
