@@ -21,7 +21,7 @@ The *original* Evil Lsass Twin version without any custom functionality, obfusca
 Since it's here in the Nimless folder, that obviously means this version works without the Nim Runtime or C Standard Library. Tested and works as PIC. Also included is a Python script to extract the .text section and write to a new file. File names are hardcoded and will need to be changed! 
 
 Had to do some nasty, hacky things to get this working as PIC. Code refresh incoming! 
-## Notes
+#### Notes
 First, you cannot enabling printing to the console if you intend to use this as shellcode (PIC). It's fine to enable that otherwise.
 
 ~~Second, you need to change lines 112-121 in `main.nim` to *your* server's IP address. This is a character array and it looks awful. The stack string macro was causing issues here and this was the quick and dirty way to get PIC working.~~
@@ -31,7 +31,7 @@ Second, change line 58 in `main.nim` to include *your* server's IPv4 address. Th
 Third, if and only if you want to use a different port, change line 59.
 
 Fourth, should you want to remove another indicator, change the temporary file name defined on line 56.
-## Usage
+#### Usage
 If you've used Evil Lsass Twin before, you know how to use this version. 
 
 Compile -> Set up a listener on your server (ex: `nc -lvnp 9001 > lsassDump.dmp`) -> Run executable on Windows target
