@@ -14,7 +14,7 @@ How this works:
 4. File is deleted after open handle to it is closed
 5. Mapped Data (memory dump) is encrypted and saved to disk *or* sent to server
 
-This will only occur if the tool is set to use the standard Win32 `MiniDumpWriteDump` API function. By default, EvilLsassTwin uses a custom minidump function that will keep the data in memory unless set to save to disk. This allows EvilLsassTwin to keep the dump size to a minimum. 
+This will only occur if the tool is set to use the standard Win32 `MiniDumpWriteDump` API function. By default, EvilLsassTwin uses a custom minidump function on the process fork that will keep the data in memory unless set to save to disk. This allows EvilLsassTwin to keep the dump size to a minimum. 
 
 Requires the `winim` and `ptr_math` modules. Several IOCs and opportunities for detection since this simple port was not originally built with stealth in mind. However, as noted above, this project _does_ include some stealthy features. 
 
