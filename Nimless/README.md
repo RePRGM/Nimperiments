@@ -57,5 +57,20 @@ Ideas:
   *Update 2: Issue seems to be connected to the `complexXor` function in `stackstr.nim`. Linker tends to complain about multiple defintions for it. Workaround, as described above, is telling the linker to allow this. Need to actually fix at some point though*
 - Oddity: May not be able to use `emit` pragma to directly write C/C++ code.
 
+- Linker errors: "*undefined reference to x*" may be due to GCC generating calls to functions in spite of us not using stdlib. Try adding `--t:"-fno-tree-loop-distribute-patterns`, `--t:"-fno-builtin"` to `nim.cfg`. In other cases, some functions like `memmove`, `memcmp`, `memcpy`, `memset` may require you to create an implementation yourself.
+
+  e.g. ```nim
+  proc memmove(dest, src: pointer, n: csize_t): pointer {.exportc, cdecl.} =
+    let d = cast[ptr UncheckedArray[byte]](dest)
+    let s = cast[ptr UncheckedArray[byte]](src)
+    if cast[int](dest) < cast[int](src):
+      for i in 0 ..< n.int:
+        d[i] = s[i]
+    else:
+      for i in countdown(n.int - 1, 0):
+      d[i] = s[i]
+    return dest            
+  ```
+  
 ## Credit
 Everything here is **heavily** based on (and/or often unmodified from) the [Writing Nimless](https://github.com/m4ul3r/writing_nimless/tree/main) repository. 
