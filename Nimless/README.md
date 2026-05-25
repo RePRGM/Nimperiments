@@ -59,7 +59,8 @@ Ideas:
 
 - Linker errors: "*undefined reference to x*" may be due to GCC generating calls to functions in spite of us not using stdlib. Try adding `--t:"-fno-tree-loop-distribute-patterns`, `--t:"-fno-builtin"` to `nim.cfg`. In other cases, some functions like `memmove`, `memcmp`, `memcpy`, `memset` may require you to create an implementation yourself.
 
-  e.g. ```nim
+  e.g.
+  ```nim
   proc memmove(dest, src: pointer, n: csize_t): pointer {.exportc, cdecl.} =
     let d = cast[ptr UncheckedArray[byte]](dest)
     let s = cast[ptr UncheckedArray[byte]](src)
