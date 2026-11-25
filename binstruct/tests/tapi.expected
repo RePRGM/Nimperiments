@@ -1,0 +1,13 @@
+A 515 1029
+B 003412efbeadde00
+C ......AB
+D fffe0000
+E 01000000000000020003000000000000000000000000000405000000000661620000 34
+F 1 2 3 4 5 6 97980 true
+G aaaa0b007061796c6f6164
+H 2 true
+E1 unpack short ValueError
+E2 unpackFrom past end IndexError
+E3 packInto short IndexError
+E4 half overflow OverflowError
+E5 reader short IndexError
